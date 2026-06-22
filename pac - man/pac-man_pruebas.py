@@ -198,9 +198,12 @@ def mouse_click_callback(window, button, action, mods):
             elif punto_en_rectangulo(x, y, boton_menu_pausa_rect): estado_actual = ESTADO_MENU
             elif punto_en_rectangulo(x, y, boton_salir_pausa_rect): glfw.set_window_should_close(window, True)
 
+# CORREGIDO: Forzar el paso por la animación de introducción y sincronizar relojes
         elif estado_actual == ESTADO_GAME_OVER:
             if punto_en_rectangulo(x, y, boton_reiniciar_go_rect):
-                inicializar_juego(); estado_actual = ESTADO_JUEGO
+                inicializar_juego()
+                estado_actual = ESTADO_INTRO
+                tiempo_inicio_intro = glfw.get_time()
             elif punto_en_rectangulo(x, y, boton_menu_go_rect): estado_actual = ESTADO_MENU
             elif punto_en_rectangulo(x, y, boton_salir_go_rect): glfw.set_window_should_close(window, True)
 
