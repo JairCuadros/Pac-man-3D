@@ -474,6 +474,79 @@ def draw_styled_button(rect, texture_id, text, r, g, b):
     ty = rect[1] + (rect[3] / 2) - 7
     render_bitmap_string(tx, ty, GLUT_BITMAP_HELVETICA_18, text)
 
+
+def dibujar_minimapa():
+    minimapa_w = 220
+    minimapa_h = 120
+    margen = 18
+    x0 = margen
+    y0 = margen
+    cell_w = minimapa_w / ANCHO_MAPA
+    cell_h = minimapa_h / ALTO_MAPA
+
+    glColor4f(0.0, 0.0, 0.0, 0.60)
+    glBegin(GL_QUADS)
+    glVertex2f(x0, y0)
+    glVertex2f(x0 + minimapa_w, y0)
+    glVertex2f(x0 + minimapa_w, y0 + minimapa_h)
+    glVertex2f(x0, y0 + minimapa_h)
+    glEnd()
+
+    glLineWidth(2.0); glColor3f(0.0, 0.85, 1.0)
+    glBegin(GL_LINE_LOOP)
+    glVertex2f(x0, y0)
+    glVertex2f(x0 + minimapa_w, y0)
+    glVertex2f(x0 + minimapa_w, y0 + minimapa_h)
+    glVertex2f(x0, y0 + minimapa_h)
+    glEnd()
+
+    for f in range(ALTO_MAPA):
+        for c in range(ANCHO_MAPA):
+            if MAPA[f][c] == 1:
+                glColor3f(0.15, 0.15, 0.15)
+                px = x0 + c * cell_w
+                py = y0 + minimapa_h - (f + 1) * cell_h
+                glBegin(GL_QUADS)
+                glVertex2f(px, py)
+                glVertex2f(px + cell_w, py)
+                glVertex2f(px + cell_w, py + cell_h)
+                glVertex2f(px, py + cell_h)
+                glEnd()
+
+    glColor3f(1.0, 1.0, 0.0)
+    punto_radio = min(cell_w, cell_h) * 0.10
+    for p in puntos:
+        dot_x = x0 + p[0] * cell_w
+        dot_y = y0 + minimapa_h - p[1] * cell_h
+        glBegin(GL_QUADS)
+        glVertex2f(dot_x - punto_radio, dot_y - punto_radio)
+        glVertex2f(dot_x + punto_radio, dot_y - punto_radio)
+        glVertex2f(dot_x + punto_radio, dot_y + punto_radio)
+        glVertex2f(dot_x - punto_radio, dot_y + punto_radio)
+        glEnd()
+
+    glColor3f(1.0, 1.0, 0.0)
+    pac_x = x0 + pacman_x * cell_w
+    pac_y = y0 + minimapa_h - pacman_z * cell_h
+    glBegin(GL_TRIANGLES)
+    glVertex2f(pac_x, pac_y + punto_radio * 1.6)
+    glVertex2f(pac_x - punto_radio * 1.2, pac_y - punto_radio * 1.0)
+    glVertex2f(pac_x + punto_radio * 1.2, pac_y - punto_radio * 1.0)
+    glEnd()
+
+    for f in fantasmas:
+        ghost_color = (0.0, 0.0, 0.0) if (f[7] and estado_actual == ESTADO_JUEGO) else ((0.1, 0.2, 0.9) if fantasmas_asustados else f[4])
+        glColor3f(ghost_color[0], ghost_color[1], ghost_color[2])
+        ghost_x = x0 + f[0] * cell_w
+        ghost_y = y0 + minimapa_h - f[1] * cell_h
+        ghost_size = punto_radio * 1.5
+        glBegin(GL_QUADS)
+        glVertex2f(ghost_x - ghost_size, ghost_y - ghost_size)
+        glVertex2f(ghost_x + ghost_size, ghost_y - ghost_size)
+        glVertex2f(ghost_x + ghost_size, ghost_y + ghost_size)
+        glVertex2f(ghost_x - ghost_size, ghost_y + ghost_size)
+        glEnd()
+
 def renderizar_menu_principal():
     setup_ortho()
     glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, id_textura_menu); glColor3f(1.0, 1.0, 1.0)
@@ -556,6 +629,7 @@ def renderizar_hud_interfaz():
         glColor4f(0.0, 0.0, 0.0, 0.65); glBegin(GL_QUADS); glVertex2f(ventana_ancho - 250, ventana_alto - 60); glVertex2f(ventana_ancho - 20, ventana_alto - 60); glVertex2f(ventana_ancho - 20, ventana_alto - 15); glVertex2f(ventana_ancho - 250, ventana_alto - 15); glEnd()
         glLineWidth(2.0); glColor3f(0.0, 0.85, 1.0); glBegin(GL_LINE_LOOP); glVertex2f(ventana_ancho - 250, ventana_alto - 60); glVertex2f(ventana_ancho - 20, ventana_alto - 60); glVertex2f(ventana_ancho - 20, ventana_alto - 15); glVertex2f(ventana_ancho - 250, ventana_alto - 15); glEnd()
         
+        dibujar_minimapa()
         glColor3f(1.0, 1.0, 0.0)
         render_bitmap_string(ventana_ancho - 220, ventana_alto - 47, GLUT_BITMAP_TIMES_ROMAN_24, f"PUNTOS: {puntaje:05d}")
 
