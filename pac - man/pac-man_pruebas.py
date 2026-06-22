@@ -789,13 +789,13 @@ def main():
 
 # --- CONTROLADOR MAESTRO DE LOS 4 FANTASMAS (IA DE MOVIMIENTO CORREGIDA) ---
                 tiempo_de_juego = tiempo_actual - tiempo_inicio_juego
-                for f in fantasmas:
+                for idx, f in enumerate(fantasmas):
                     if f[7]:
                         vel_actual = 0.10  # Velocidad express para el retorno de los ojos
                     elif fantasmas_asustados:
-                        vel_actual = 0.02  # Mitad de velocidad en estado de huida (bola rosa)
+                        vel_actual = 0.04  # Mitad de velocidad en estado de huida (bola rosa)
                     else:
-                        vel_actual = 0.02  # Velocidad estándar de persecución
+                        vel_actual = 0.04  # Velocidad estándar de persecución
 
                     # 1. Espera inicial escalonada dentro de la casa central
                     if estado_actual == ESTADO_JUEGO and tiempo_de_juego < f[8] and not f[7]:
@@ -874,7 +874,7 @@ def main():
                                     for dx, dz, cx, cz in caminos_libres:
                                         dist = (cx + 0.5 - 13.5)**2 + (cz + 0.5 - 6.5)**2
                                         if dist < min_distancia:
-                                            min_distancia = dist
+                                            min_distancia = dist    
                                             mejor_opcion = (dx, dz)
                                 elif fantasmas_asustados:
                                     # CASO BOLA ROSA: Maximizar la distancia euclidiana respecto a Pac-Man (Huida real)
@@ -885,27 +885,38 @@ def main():
                                             max_distancia = dist
                                             mejor_opcion = (dx, dz)
                                 else:
-                                    # CASO PERSECUCIÓN: Minimizar la distancia hacia Pac-Man (Ataque)
+                                    # CASO PERSECUCIÓN: ¡SISTEMA DE PERSONALIDADES ACTIVO!
+                                    t_x, t_z = pacman_x, pacman_z
+                                    
+                                    if idx == 1: # Pinky (Rosado): Emboscada. Intenta ganar el paso 3 celdas adelante
+                                        if pacman_angulo_rotacion == 90.0: t_x += 3.0
+                                        elif pacman_angulo_rotacion == 270.0: t_x -= 3.0
+                                        elif pacman_angulo_rotacion == 180.0: t_z -= 3.0
+                                        elif pacman_angulo_rotacion == 0.0: t_z += 3.0
+                                        
+                                    elif idx == 2: # Inky (Cian): Flanqueo. Busca una ruta paralela desviándose lateralmente
+                                        if pacman_angulo_rotacion in (90.0, 270.0): t_z += 2.0
+                                        else: t_x += 2.0
+                                        
+                                    elif idx == 3: # Clyde (Naranja): Distraído. Si se acerca mucho, huye a su esquina
+                                        dist_cuadrada = (f[0] - pacman_x)**2 + (f[1] - pacman_z)**2
+                                        if dist_cuadrada < 25.0: 
+                                            t_x, t_z = 1.5, 11.5 
+                                    
                                     min_distancia = float('inf')
                                     for dx, dz, cx, cz in caminos_libres:
-                                        dist = (cx + 0.5 - pacman_x)**2 + (cz + 0.5 - pacman_z)**2
+                                        dist = (cx + 0.5 - t_x)**2 + (cz + 0.5 - t_z)**2
                                         if dist < min_distancia:
                                             min_distancia = dist
                                             mejor_opcion = (dx, dz)
                                             
                                 f[2], f[3] = mejor_opcion[0], mejor_opcion[1]
-                                    
-                        f_dx = math.copysign(vel_actual, f[2]) if f[2] != 0 else 0.0
-                        f_dz = math.copysign(vel_actual, f[3]) if f[3] != 0 else 0.0
-                        if not verificar_colision(f[0] + f_dx, f[1] + f_dz):
-                            f[0] += f_dx
-                            f[1] += f_dz
 
-                        if f[7] and abs(f[0] - 13.5) < 0.25 and abs(f[1] - 6.5) < 0.25:
-                            f[0], f[1] = 13.5, 6.5
-                            f[7] = False
-                                    
-                        # Desplazamiento físico
+                            if f[7] and abs(f[0] - 13.5) < 0.25 and abs(f[1] - 6.5) < 0.25:
+                                f[0], f[1] = 13.5, 6.5
+                                f[7] = False
+
+                        # UNICO DESPLAZAMIENTO FÍSICO REAL (Fuera del bloque IF de arriba)
                         f_dx = math.copysign(vel_actual, f[2]) if f[2] != 0 else 0.0
                         f_dz = math.copysign(vel_actual, f[3]) if f[3] != 0 else 0.0
                         if not verificar_colision(f[0] + f_dx, f[1] + f_dz):
