@@ -784,17 +784,17 @@ def main():
                     for p in puntos:
                         glPushMatrix(); glTranslatef(p[0], 0.15, p[1]); glCallList(lista_moneda_id); glPopMatrix()
 
-                # --- CONTROLADOR MAESTRO DE LOS 4 FANTASMAS ---
+# --- CONTROLADOR MAESTRO DE LOS 4 FANTASMAS (IA DE MOVIMIENTO CORREGIDA) ---
                 tiempo_de_juego = tiempo_actual - tiempo_inicio_juego
                 for f in fantasmas:
                     if f[7]:
-                        vel_actual = 0.05  # Velocidad de retorno óptima y sincronizada con la cuadrícula para los ojos
+                        vel_actual = 0.10  # Velocidad express para el retorno de los ojos
                     elif fantasmas_asustados:
-                        vel_actual = 0.02  # Mitad de velocidad en estado de huida
+                        vel_actual = 0.02  # Mitad de velocidad en estado de huida (bola rosa)
                     else:
-                        vel_actual = 0.04  # Velocidad estándar de persecución
+                        vel_actual = 0.02  # Velocidad estándar de persecución
 
-                    # 1. Si no se ha cumplido su temporizador escalonado de salida, se quedan esperando rebotando en el cuarto
+                    # 1. Espera inicial escalonada dentro de la casa central
                     if estado_actual == ESTADO_JUEGO and tiempo_de_juego < f[8] and not f[7]:
                         if f[3] == 0.0 or abs(f[3]) != 0.02: f[3] = 0.02
                         if f[1] > 6.65: f[3] = -0.02
@@ -802,7 +802,7 @@ def main():
                         f[1] += f[3]
                         f[2] = 0.0
                     
-                    # 2. Lógica de salida guiada obligatoria hacia la puerta central si se cumplió el tiempo y está vivo en la casa
+                    # 2. Lógica de salida guiada obligatoria hacia la puerta central
                     elif 5.0 <= f[1] <= 7.2 and 11.0 <= f[0] <= 15.0 and not f[7] and not en_pausa_fantasma and estado_actual == ESTADO_JUEGO:
                         if abs(f[0] - 13.5) > 0.05:
                             f[2] = 0.04 if f[0] < 13.5 else -0.04
@@ -814,83 +814,93 @@ def main():
                             f[3] = -0.04
                             f[1] += f[3]
 
-                    # 3. LÓGICA DE MOVIMIENTO MATRICIAL POR PASILLOS (IA DE PERSECUCIÓN, HUIDA O RETORNO DE OJOS)
+                    # 3. LÓGICA DE MOVIMIENTO MATRICIAL POR PASILLOS (INTERPOLACIÓN DE INTERSECCIONES)
                     elif not en_pausa_fantasma and estado_actual == ESTADO_JUEGO:
-                        # Detectar si el fantasma se encuentra justo en el centro de una celda para tomar una decisión
-                        en_centro_celda = (abs((f[0] % 1.0) - 0.5) < 0.03) and (abs((f[1] % 1.0) - 0.5) < 0.03)
+                        centro_x = int(f[0]) + 0.5
+                        centro_z = int(f[1]) + 0.5
+                        
+                        # Corrección matemática: Evaluamos si el fantasma cruzará o alcanzará el centro de la baldosa en este frame
+                        llego_al_centro = False
+                        if f[2] > 0 and f[0] <= centro_x and f[0] + f[2] >= centro_x: llego_al_centro = True
+                        elif f[2] < 0 and f[0] >= centro_x and f[0] + f[2] <= centro_x: llego_al_centro = True
+                        elif f[3] > 0 and f[1] <= centro_z and f[1] + f[3] >= centro_z: llego_al_centro = True
+                        elif f[3] < 0 and f[1] >= centro_z and f[1] + f[3] <= centro_z: llego_al_centro = True
                         
                         f_dx = math.copysign(vel_actual, f[2]) if f[2] != 0 else 0.0
                         f_dz = math.copysign(vel_actual, f[3]) if f[3] != 0 else 0.0
                         
-                        # CORRECCIÓN DE IA: Detección dinámica de intersección según la velocidad actual
-                        en_centro_celda = False
-                        dist_x = abs(f[0] - (int(f[0]) + 0.5))
-                        dist_z = abs(f[1] - (int(f[1]) + 0.5))
-                        
-                        if f[2] != 0 and 0.001 < dist_x <= vel_actual:
-                            en_centro_celda = True
-                        elif f[3] != 0 and 0.001 < dist_z <= vel_actual:
-                            en_centro_celda = True
-                                
+                        # Si choca contra un muro o llega al centro geométrico de la celda, decide nuevo rumbo
+                        if verificar_colision(f[0] + f_dx, f[1] + f_dz) or llego_al_centro:
+                            f[0] = centro_x
+                            f[1] = centro_z
+                            
                             tx, tz = int(f[0]), int(f[1])
                             caminos_libres = []
                             direcciones_posibles = [
-                                (0.0, -vel_actual, 0, -1), # Arriba
-                                (0.0, vel_actual, 0, 1),   # Abajo
-                                (-vel_actual, 0.0, -1, 0), # Izquierda
-                                (vel_actual, 0.0, 1, 0)    # Derecha
+                                (0.0, -1.0, 0, -1), # Arriba
+                                (0.0, 1.0, 0, 1),   # Abajo
+                                (-1.0, 0.0, -1, 0), # Izquierda
+                                (1.0, 0.0, 1, 0)    # Derecha
                             ]
                             
-                            for dx, dz, cx_off, cz_off in direcciones_posibles:
-                                # Restricción de giro de 180° sobre sus propios pasos para mantener flujo natural
-                                if f[2] != 0 and dx == -f[2]: continue
-                                if f[3] != 0 and dz == -f[3]: continue
+                            for dx_p, dz_p, cx_off, cz_off in direcciones_posibles:
+                                # Filtro estricto de 180° comparando solo signos vectoriales
+                                if f[2] != 0 and dx_p == -math.copysign(1.0, f[2]): continue
+                                if f[3] != 0 and dz_p == -math.copysign(1.0, f[3]): continue
                                 
                                 nx_cell = tx + cx_off
                                 nz_cell = tz + cz_off
                                 if 0 <= nx_cell < ANCHO_MAPA and 0 <= nz_cell < ALTO_MAPA:
                                     if MAPA[nz_cell][nx_cell] == 0:
-                                        caminos_libres.append((dx, dz, nx_cell, nz_cell))
+                                        caminos_libres.append((dx_p * vel_actual, dz_p * vel_actual, nx_cell, nz_cell))
                             
+                            # Fallback si entra en un callejón sin salida
                             if not caminos_libres:
-                                for dx, dz, cx_off, cz_off in direcciones_posibles:
+                                for dx_p, dz_p, cx_off, cz_off in direcciones_posibles:
                                     nx_cell = tx + cx_off
                                     nz_cell = tz + cz_off
                                     if 0 <= nx_cell < ANCHO_MAPA and 0 <= nz_cell < ALTO_MAPA:
                                         if MAPA[nz_cell][nx_cell] == 0:
-                                            caminos_libres.append((dx, dz, nx_cell, nz_cell))
+                                            caminos_libres.append((dx_p * vel_actual, dz_p * vel_actual, nx_cell, nz_cell))
                                             
                             if caminos_libres:
+                                mejor_opcion = caminos_libres[0]
                                 if f[7]:
-                                    # CASO OJOS: El destino fijo es el cuarto central (13.5, 6.5) siguiendo los pasillos libres
-                                    mejor_opcion = caminos_libres[0]
+                                    # CASO OJOS: Retorno óptimo guiado al cuarto central
                                     min_distancia = float('inf')
-                                    for dx, dz, cx_off, cz_off in caminos_libres:
-                                        dist = (cx_off + 0.5 - 13.5)**2 + (cz_off + 0.5 - 6.5)**2
+                                    for dx, dz, cx, cz in caminos_libres:
+                                        dist = (cx + 0.5 - 13.5)**2 + (cz + 0.5 - 6.5)**2
                                         if dist < min_distancia:
                                             min_distancia = dist
                                             mejor_opcion = (dx, dz)
-                                    f[2], f[3] = mejor_opcion[0], mejor_opcion[1]
                                 elif fantasmas_asustados:
-                                    # IA de Huida. Eligen el pasillo libre que MAXIMICE la distancia con Pac-Man
-                                    mejor_opcion = caminos_libres[0]
+                                    # CASO BOLA ROSA: Maximizar la distancia euclidiana respecto a Pac-Man (Huida real)
                                     max_distancia = -1.0
-                                    for dx, dz, cx_off, cz_off in caminos_libres:
-                                        dist = (cx_off + 0.5 - pacman_x)**2 + (cz_off + 0.5 - pacman_z)**2
+                                    for dx, dz, cx, cz in caminos_libres:
+                                        dist = (cx + 0.5 - pacman_x)**2 + (cz + 0.5 - pacman_z)**2
                                         if dist > max_distancia:
                                             max_distancia = dist
                                             mejor_opcion = (dx, dz)
-                                    f[2], f[3] = mejor_opcion[0], mejor_opcion[1]
                                 else:
-                                    # CASO PERSECUCIÓN: Buscan activamente acortar camino hacia Pac-Man
-                                    mejor_opcion = caminos_libres[0]
+                                    # CASO PERSECUCIÓN: Minimizar la distancia hacia Pac-Man (Ataque)
                                     min_distancia = float('inf')
-                                    for dx, dz, cx_off, cz_off in caminos_libres:
-                                        dist = (cx_off + 0.5 - pacman_x)**2 + (cz_off + 0.5 - pacman_z)**2
+                                    for dx, dz, cx, cz in caminos_libres:
+                                        dist = (cx + 0.5 - pacman_x)**2 + (cz + 0.5 - pacman_z)**2
                                         if dist < min_distancia:
                                             min_distancia = dist
                                             mejor_opcion = (dx, dz)
-                                    f[2], f[3] = mejor_opcion[0], mejor_opcion[1]
+                                            
+                                f[2], f[3] = mejor_opcion[0], mejor_opcion[1]
+                                    
+                        f_dx = math.copysign(vel_actual, f[2]) if f[2] != 0 else 0.0
+                        f_dz = math.copysign(vel_actual, f[3]) if f[3] != 0 else 0.0
+                        if not verificar_colision(f[0] + f_dx, f[1] + f_dz):
+                            f[0] += f_dx
+                            f[1] += f_dz
+
+                        if f[7] and abs(f[0] - 13.5) < 0.25 and abs(f[1] - 6.5) < 0.25:
+                            f[0], f[1] = 13.5, 6.5
+                            f[7] = False
                                     
                         # Desplazamiento físico
                         f_dx = math.copysign(vel_actual, f[2]) if f[2] != 0 else 0.0
