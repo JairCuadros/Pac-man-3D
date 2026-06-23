@@ -120,6 +120,7 @@ id_textura_boton_volver_a_jugar = 0
 id_textura_titulo_menu = 0   
 id_textura_game_over = 0    
 id_textura_pausa = 0        
+id_textura_cuadro_puntuacion = 0
 
 # IDs de las Listas de Visualización de OpenGL
 lista_muros_id = 0
@@ -851,13 +852,34 @@ def renderizar_hud_interfaz():
                 glVertex2f(x + 28, y + 6)
                 glEnd()
         
-        # Caja Score
-        glColor4f(0.0, 0.0, 0.0, 0.65); glBegin(GL_QUADS); glVertex2f(ventana_ancho - 250, ventana_alto - 60); glVertex2f(ventana_ancho - 20, ventana_alto - 60); glVertex2f(ventana_ancho - 20, ventana_alto - 15); glVertex2f(ventana_ancho - 250, ventana_alto - 15); glEnd()
-        glLineWidth(2.0); glColor3f(0.0, 0.85, 1.0); glBegin(GL_LINE_LOOP); glVertex2f(ventana_ancho - 250, ventana_alto - 60); glVertex2f(ventana_ancho - 20, ventana_alto - 60); glVertex2f(ventana_ancho - 20, ventana_alto - 15); glVertex2f(ventana_ancho - 250, ventana_alto - 15); glEnd()
-        
+        # Caja Score - usando textura de cuadro_puntuacion en la esquina superior derecha
+        cuadro_w = 280
+        cuadro_h = 60
+        cuadro_x = ventana_ancho - cuadro_w - 20
+        cuadro_y = ventana_alto - cuadro_h - 20
+        if 'id_textura_cuadro_puntuacion' in globals() and id_textura_cuadro_puntuacion and id_textura_cuadro_puntuacion != 0:
+            glEnable(GL_TEXTURE_2D)
+            glBindTexture(GL_TEXTURE_2D, id_textura_cuadro_puntuacion)
+            glColor3f(1.0, 1.0, 1.0)
+            glBegin(GL_QUADS)
+            glTexCoord2f(0.0, 0.0); glVertex2f(cuadro_x, cuadro_y)
+            glTexCoord2f(1.0, 0.0); glVertex2f(cuadro_x + cuadro_w, cuadro_y)
+            glTexCoord2f(1.0, 1.0); glVertex2f(cuadro_x + cuadro_w, cuadro_y + cuadro_h)
+            glTexCoord2f(0.0, 1.0); glVertex2f(cuadro_x, cuadro_y + cuadro_h)
+            glEnd(); glDisable(GL_TEXTURE_2D)
+        else:
+            glColor4f(0.0, 0.0, 0.0, 0.65); glBegin(GL_QUADS); glVertex2f(cuadro_x, cuadro_y); glVertex2f(cuadro_x + cuadro_w, cuadro_y); glVertex2f(cuadro_x + cuadro_w, cuadro_y + cuadro_h); glVertex2f(cuadro_x, cuadro_y + cuadro_h); glEnd()
+        glLineWidth(2.0); glColor3f(0.0, 0.85, 1.0); glBegin(GL_LINE_LOOP); glVertex2f(cuadro_x, cuadro_y); glVertex2f(cuadro_x + cuadro_w, cuadro_y); glVertex2f(cuadro_x + cuadro_w, cuadro_y + cuadro_h); glVertex2f(cuadro_x, cuadro_y + cuadro_h); glEnd()
+
+        texto_score = f"PUNTOS: {puntaje:05d}"
+        text_x = cuadro_x + 18
+        text_y = cuadro_y + cuadro_h / 2 - 8
+        glColor4f(0.0, 0.0, 0.0, 1.0)
+        render_bitmap_string(text_x + 2, text_y - 2, GLUT_BITMAP_TIMES_ROMAN_24, texto_score)
+        glColor3f(1.0, 1.0, 0.2)
+        render_bitmap_string(text_x, text_y, GLUT_BITMAP_TIMES_ROMAN_24, texto_score)
+
         dibujar_minimapa()
-        glColor3f(1.0, 1.0, 0.0)
-        render_bitmap_string(ventana_ancho - 220, ventana_alto - 47, GLUT_BITMAP_TIMES_ROMAN_24, f"PUNTOS: {puntaje:05d}")
 
         if fantasmas_asustados:
             glColor3f(1.0, 0.2, 0.8)
@@ -947,7 +969,7 @@ def procesar_teclado_navegacion(window):
 # ==============================================================================
 def main():
     global puntaje, pacman_vidas, pacman_x, pacman_z, estado_actual, puntos, fantasmas, capsulas_poder, fantasmas_asustados, tiempo_fantasmas_asustados, tiempo_inicio_muerte, tiempo_inicio_intro, tiempo_inicio_juego
-    global boca_angulo, boca_abriendo, id_textura_muro, id_textura_piso, id_textura_arbol, id_textura_piso_exterior, id_textura_corazon, id_textura_menu, id_textura_boton, id_textura_boton_jugar, id_textura_boton_menu_principal, id_textura_boton_puntuacion, id_textura_boton_reanudar, id_textura_boton_salir, id_textura_boton_salir_del_juego, id_textura_boton_volver_a_jugar, id_textura_titulo_menu, id_textura_game_over, id_textura_pausa, pacman_invulnerable, pacman_tiempo_invulnerable, record_guardado
+    global boca_angulo, boca_abriendo, id_textura_muro, id_textura_piso, id_textura_arbol, id_textura_piso_exterior, id_textura_corazon, id_textura_menu, id_textura_boton, id_textura_boton_jugar, id_textura_boton_menu_principal, id_textura_boton_puntuacion, id_textura_boton_reanudar, id_textura_boton_salir, id_textura_boton_salir_del_juego, id_textura_boton_volver_a_jugar, id_textura_titulo_menu, id_textura_game_over, id_textura_pausa, id_textura_cuadro_puntuacion, pacman_invulnerable, pacman_tiempo_invulnerable, record_guardado
     global musica_actual, fx_comer, fx_muerte, fx_retorno, fx_pausa, en_pausa_fantasma, tiempo_pausa_fantasma
     
     if not glfw.init(): return
@@ -980,6 +1002,7 @@ def main():
     id_textura_titulo_menu             = cargar_textura_imagen("titulo_menu.png")
     id_textura_game_over               = cargar_textura_imagen("game_over.png")
     id_textura_pausa                   = cargar_textura_imagen("pausa.png")
+    id_textura_cuadro_puntuacion       = cargar_textura_imagen("cuadro_puntuacion.png")
     if id_textura_pausa == 0:
         print("Warning: no se pudo cargar pausa.png, se usará texto de fallback en PAUSA")
 
