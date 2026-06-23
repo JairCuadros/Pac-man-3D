@@ -59,7 +59,8 @@ musica_juego_etapa = 1
 musica_anterior_pausa = None
 fx_comer = None
 fx_muerte = None
-fx_retorno = None  
+fx_retorno = None
+fx_pausa = None
 
 volumen_actual = 0.5
 juego_muteado = False
@@ -206,7 +207,9 @@ def mouse_click_callback(window, button, action, mods):
             estado_actual = ESTADO_MENU
 
         elif estado_actual == ESTADO_PAUSA:
-            if punto_en_rectangulo(x, y, boton_reanudar_rect): estado_actual = ESTADO_JUEGO
+            if punto_en_rectangulo(x, y, boton_reanudar_rect):
+                estado_actual = ESTADO_JUEGO
+                reproducir_sonido_pausa()
             elif punto_en_rectangulo(x, y, boton_menu_pausa_rect): estado_actual = ESTADO_MENU
             elif punto_en_rectangulo(x, y, boton_salir_pausa_rect): glfw.set_window_should_close(window, True)
 
@@ -229,6 +232,16 @@ def actualizar_volumen_maestro():
     if fx_comer: fx_comer.set_volume(vol)
     if fx_muerte: fx_muerte.set_volume(vol)
     if fx_retorno: fx_retorno.set_volume(vol)
+    if fx_pausa: fx_pausa.set_volume(vol)
+
+
+def reproducir_sonido_pausa():
+    if juego_muteado or fx_pausa is None:
+        return
+    try:
+        fx_pausa.play()
+    except Exception:
+        pass
 
 
 def reproducir_musica_juego_etapa(etapa):
@@ -862,12 +875,16 @@ def procesar_teclado_navegacion(window):
         esc_presionado_antes = esc_ahora; return
 
     if estado_actual == ESTADO_PAUSA:
-        if esc_ahora and not esc_presionado_antes: estado_actual = ESTADO_JUEGO
+        if esc_ahora and not esc_presionado_antes:
+            estado_actual = ESTADO_JUEGO
+            reproducir_sonido_pausa()
         esc_presionado_antes = esc_ahora; return
 
     if estado_actual == ESTADO_JUEGO:
         if esc_ahora and not esc_presionado_antes:
-            estado_actual = ESTADO_PAUSA; esc_presionado_antes = True; return
+            estado_actual = ESTADO_PAUSA
+            reproducir_sonido_pausa()
+            esc_presionado_antes = True; return
         esc_presionado_antes = esc_ahora
 
         if en_pausa_fantasma: return
@@ -886,7 +903,7 @@ def procesar_teclado_navegacion(window):
 def main():
     global puntaje, pacman_vidas, pacman_x, pacman_z, estado_actual, puntos, fantasmas, capsulas_poder, fantasmas_asustados, tiempo_fantasmas_asustados, tiempo_inicio_muerte, tiempo_inicio_intro, tiempo_inicio_juego
     global boca_angulo, boca_abriendo, id_textura_muro, id_textura_piso, id_textura_arbol, id_textura_piso_exterior, id_textura_corazon, id_textura_menu, id_textura_boton, id_textura_boton_jugar, id_textura_boton_menu_principal, id_textura_boton_puntuacion, id_textura_boton_reanudar, id_textura_boton_salir, id_textura_boton_salir_del_juego, id_textura_boton_volver_a_jugar, id_textura_titulo_menu, id_textura_game_over, id_textura_pausa, pacman_invulnerable, pacman_tiempo_invulnerable, record_guardado
-    global musica_actual, fx_comer, fx_muerte, fx_retorno, en_pausa_fantasma, tiempo_pausa_fantasma
+    global musica_actual, fx_comer, fx_muerte, fx_retorno, fx_pausa, en_pausa_fantasma, tiempo_pausa_fantasma
     
     if not glfw.init(): return
     window = glfw.create_window(ventana_ancho, ventana_alto, "Pac-Man 3D - Laberinto del Bosque", None, None)
@@ -928,6 +945,7 @@ def main():
         fx_comer = mixer.Sound("sonido_comer.wav")    
         fx_muerte = mixer.Sound("sonido_muerte.wav")  
         fx_retorno = mixer.Sound("sonido_retorno.wav") 
+        fx_pausa = mixer.Sound("sonido_pausa.wav")
     except Exception as e:
         print(f"Aviso de Audio Opcional: {e}")
 
