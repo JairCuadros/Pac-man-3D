@@ -79,6 +79,7 @@ boca_angulo = 0.0
 boca_abriendo = True
 fantasmas = []
 puntos = []
+puntajes_fantasma = []
 
 capsulas_poder = []
 fantasmas_asustados = False
@@ -378,7 +379,7 @@ def cargar_records():
     return puntos_records[:5]
 
 def inicializar_juego():
-    global pacman_x, pacman_z, pacman_angulo_rotacion, pacman_vidas, puntaje, puntos, fantasmas, pacman_invulnerable, pacman_tiempo_invulnerable, record_guardado, capsulas_poder, fantasmas_asustados, total_puntos, musica_juego_etapa, musica_anterior_pausa
+    global pacman_x, pacman_z, pacman_angulo_rotacion, pacman_vidas, puntaje, puntos, fantasmas, pacman_invulnerable, pacman_tiempo_invulnerable, record_guardado, capsulas_poder, fantasmas_asustados, total_puntos, musica_juego_etapa, musica_anterior_pausa, puntajes_fantasma
     pacman_x, pacman_z, pacman_angulo_rotacion, pacman_vidas, puntaje = 1.5, 1.5, 90.0, 3, 0
     pacman_invulnerable, pacman_tiempo_invulnerable = False, 0.0
     record_guardado = False 
@@ -393,6 +394,7 @@ def inicializar_juego():
     ]
     
     puntos = []
+    puntajes_fantasma = []
     for f in range(ALTO_MAPA):
         for c in range(ANCHO_MAPA):
             if MAPA[f][c] == 0 and (f != 1 or c != 1):
@@ -400,7 +402,7 @@ def inicializar_juego():
                 es_dentro_casa = (5 <= f <= 7 and 11 <= c <= 15)
                 if not es_posicion_capsula and not es_dentro_casa:
                     puntos.append([c + 0.5, f + 0.5])
-    
+
     total_puntos = len(puntos)
     musica_juego_etapa = 1
     
@@ -553,6 +555,50 @@ def render_bitmap_string(x, y, font, text_string):
     glWindowPos2i(int(x), int(y))
     for char in text_string:
         glutBitmapCharacter(font, ord(char))
+
+
+def proyectar_a_pantalla(x, y, z):
+    modelview = glGetDoublev(GL_MODELVIEW_MATRIX)
+    projection = glGetDoublev(GL_PROJECTION_MATRIX)
+    viewport = glGetIntegerv(GL_VIEWPORT)
+    win = gluProject(x, y, z, modelview, projection, viewport)
+    if win is None:
+        return 0.0, 0.0, 0.0
+    return win[0], win[1], win[2]
+
+
+def agregar_popup_puntaje_fantasma(x, z, texto):
+    puntajes_fantasma.append({
+        'x': x,
+        'z': z,
+        'texto': texto,
+        'inicio': glfw.get_time(),
+        'duracion': 1.2,
+        'offset_x': random.uniform(-0.35, 0.35),
+        'offset_y': random.uniform(0.15, 0.35)
+    })
+
+
+def dibujar_popups_puntaje_fantasma():
+    if not puntajes_fantasma:
+        return
+    current_time = glfw.get_time()
+    for popup in puntajes_fantasma[:]:
+        elapsed = current_time - popup['inicio']
+        if elapsed > popup['duracion']:
+            puntajes_fantasma.remove(popup)
+            continue
+        progress = elapsed / popup['duracion']
+        alpha = max(0.0, 1.0 - progress)
+        world_y = 0.60 + popup['offset_y'] + progress * 0.25
+        screen_x, screen_y, _ = proyectar_a_pantalla(popup['x'] + popup['offset_x'], world_y, popup['z'])
+        if 0 <= screen_x <= ventana_ancho and 0 <= screen_y <= ventana_alto:
+            shadow_y = screen_y - 2
+            glColor4f(0.0, 0.0, 0.0, alpha)
+            render_bitmap_string(screen_x - 14, shadow_y - 1, GLUT_BITMAP_TIMES_ROMAN_24, popup['texto'])
+            glColor4f(1.0, 1.0, 0.2, alpha)
+            render_bitmap_string(screen_x - 15, screen_y, GLUT_BITMAP_TIMES_ROMAN_24, popup['texto'])
+
 
 def setup_ortho():
     glMatrixMode(GL_PROJECTION); glPushMatrix(); glLoadIdentity(); gluOrtho2D(0, ventana_ancho, 0, ventana_alto)
@@ -817,7 +863,6 @@ def renderizar_hud_interfaz():
             glColor3f(1.0, 0.2, 0.8)
             render_bitmap_string(30, ventana_alto - 90, GLUT_BITMAP_HELVETICA_18, "¡MODO CAZADOR ACTIVO!")
             
-
         if estado_actual == ESTADO_INTRO:
             glColor3f(1.0, 1.0, 0.0)
             render_bitmap_string(int(ventana_ancho/2) - 80, int(ventana_alto/2), GLUT_BITMAP_TIMES_ROMAN_24, "¡PREPARATE!")
@@ -1238,6 +1283,7 @@ def main():
                         if distancia_letal < 0.42:
                             if fantasmas_asustados:
                                 puntaje += 100
+                                agregar_popup_puntaje_fantasma(f[0], f[1], "100")
                                 f[7] = True 
                                 en_pausa_fantasma = True
                                 tiempo_pausa_fantasma = tiempo_actual
@@ -1307,6 +1353,7 @@ def main():
             elif estado_actual in (ESTADO_GAME_OVER, ESTADO_VICTORIA):
                 procesar_teclado_navegacion(window)
 
+            dibujar_popups_puntaje_fantasma()
             renderizar_hud_interfaz()
 
         glfw.swap_buffers(window)
