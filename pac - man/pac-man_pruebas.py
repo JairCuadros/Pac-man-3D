@@ -55,12 +55,16 @@ record_guardado = False
 
 # Variables de control de audio musical y efectos
 musica_actual = None
+musica_juego_etapa = 1
+musica_anterior_pausa = None
 fx_comer = None
 fx_muerte = None
 fx_retorno = None  
 
-volumen_actual = 0.6
+volumen_actual = 0.5
 juego_muteado = False
+
+total_puntos = 0
 
 # ==============================================================================
 # VARIABLES DE ESTADO GLOBAL (DENTRO DEL JUEGO)
@@ -104,8 +108,16 @@ id_textura_piso_exterior = 0
 id_textura_corazon = 0 
 id_textura_menu = 0
 id_textura_boton = 0
+id_textura_boton_jugar = 0
+id_textura_boton_menu_principal = 0
+id_textura_boton_puntuacion = 0
+id_textura_boton_reanudar = 0
+id_textura_boton_salir = 0
+id_textura_boton_salir_del_juego = 0
+id_textura_boton_volver_a_jugar = 0
 id_textura_titulo_menu = 0   
-id_textura_game_over = 0     
+id_textura_game_over = 0    
+id_textura_pausa = 0        
 
 # IDs de las Listas de Visualización de OpenGL
 lista_muros_id = 0
@@ -130,9 +142,9 @@ boton_menu_pausa_rect    = [ventana_ancho/2 - 150, ventana_alto/2 - 70,  300, 70
 boton_salir_pausa_rect   = [ventana_ancho/2 - 150, ventana_alto/2 - 160, 300, 70]
 
 # Botones de game over
-boton_reiniciar_go_rect  = [ventana_ancho/2 - 150, ventana_alto/2 - 200, 300, 70]
-boton_menu_go_rect       = [ventana_ancho/2 - 150, ventana_alto/2 - 290, 300, 70]
-boton_salir_go_rect      = [ventana_ancho/2 - 150, ventana_alto/2 - 380, 300, 70]
+boton_reiniciar_go_rect  = [ventana_ancho/2 - 150, ventana_alto/2 + 10, 300, 70]
+boton_menu_go_rect       = [ventana_ancho/2 - 150, ventana_alto/2 - 80, 300, 70]
+boton_salir_go_rect      = [ventana_ancho/2 - 150, ventana_alto/2 - 170, 300, 70]
 
 esc_presionado_antes = False
 
@@ -159,9 +171,9 @@ def redimensionar_ventana_callback(window, width, height):
     boton_menu_pausa_rect  = [ventana_ancho/2 - 150, ventana_alto/2 - 70,  300, 70]
     boton_salir_pausa_rect = [ventana_ancho/2 - 150, ventana_alto/2 - 160, 300, 70]
 
-    boton_reiniciar_go_rect = [ventana_ancho/2 - 150, ventana_alto/2 - 200, 300, 70]
-    boton_menu_go_rect      = [ventana_ancho/2 - 150, ventana_alto/2 - 290, 300, 70]
-    boton_salir_go_rect     = [ventana_ancho/2 - 150, ventana_alto/2 - 380, 300, 70]
+    boton_reiniciar_go_rect = [ventana_ancho/2 - 150, ventana_alto/2 + 10, 300, 70]
+    boton_menu_go_rect      = [ventana_ancho/2 - 150, ventana_alto/2 - 80, 300, 70]
+    boton_salir_go_rect     = [ventana_ancho/2 - 150, ventana_alto/2 - 170, 300, 70]
 
     glViewport(0, 0, width, height)
 
@@ -218,13 +230,58 @@ def actualizar_volumen_maestro():
     if fx_muerte: fx_muerte.set_volume(vol)
     if fx_retorno: fx_retorno.set_volume(vol)
 
+
+def reproducir_musica_juego_etapa(etapa):
+    global musica_actual, musica_juego_etapa
+    if musica_actual == "juego" and musica_juego_etapa == etapa:
+        return
+    mixer.music.stop()
+    try:
+        if etapa == 1:
+            mixer.music.load("sonido_juego.wav")
+        elif etapa == 2:
+            mixer.music.load("sonido_juego_2.wav")
+        else:
+            mixer.music.load("sonido_juego_3.wav")
+        mixer.music.play(-1)
+        musica_actual = "juego"
+        musica_juego_etapa = etapa
+    except Exception as e:
+        print(f"Warning: no se pudo reproducir música de juego etapa {etapa}: {e}")
+
+
+def reproducir_musica_fantasma_asustado():
+    global musica_actual
+    if musica_actual == "fantasma_asustado":
+        return
+    mixer.music.stop()
+    try:
+        mixer.music.load("sonido_fantasma_asustado.wav")
+        mixer.music.play(-1)
+        musica_actual = "fantasma_asustado"
+    except Exception as e:
+        print(f"Warning: no se pudo reproducir música de fantasma asustado: {e}")
+
+
+def restablecer_musica_juego_por_progreso():
+    if total_puntos <= 0:
+        reproducir_musica_juego_etapa(1)
+        return
+    progreso = 1.0 - float(len(puntos)) / float(total_puntos)
+    if progreso >= 0.80:
+        reproducir_musica_juego_etapa(3)
+    elif progreso >= 0.50:
+        reproducir_musica_juego_etapa(2)
+    else:
+        reproducir_musica_juego_etapa(1)
+
 # ==============================================================================
 # SISTEMA DE CARGA DE RECURSOS Y TEXTURAS
 # ==============================================================================
 def cargar_textura_imagen(ruta_archivo):
     if not os.path.exists(ruta_archivo):
-        print(f"Error: El archivo de textura '{ruta_archivo}' no existe.")
-        sys.exit()
+        print(f"Warning: El archivo de textura '{ruta_archivo}' no existe. Usando placeholder.")
+        return 0
     try:
         img = Image.open(ruta_archivo)
         img = img.transpose(Image.FLIP_TOP_BOTTOM) 
@@ -308,11 +365,12 @@ def cargar_records():
     return puntos_records[:5]
 
 def inicializar_juego():
-    global pacman_x, pacman_z, pacman_angulo_rotacion, pacman_vidas, puntaje, puntos, fantasmas, pacman_invulnerable, pacman_tiempo_invulnerable, record_guardado, capsulas_poder, fantasmas_asustados
+    global pacman_x, pacman_z, pacman_angulo_rotacion, pacman_vidas, puntaje, puntos, fantasmas, pacman_invulnerable, pacman_tiempo_invulnerable, record_guardado, capsulas_poder, fantasmas_asustados, total_puntos, musica_juego_etapa, musica_anterior_pausa
     pacman_x, pacman_z, pacman_angulo_rotacion, pacman_vidas, puntaje = 1.5, 1.5, 90.0, 3, 0
     pacman_invulnerable, pacman_tiempo_invulnerable = False, 0.0
     record_guardado = False 
     fantasmas_asustados = False
+    musica_anterior_pausa = None
     
     capsulas_poder = [
         [1.5, 3.5],   
@@ -329,7 +387,10 @@ def inicializar_juego():
                 es_dentro_casa = (5 <= f <= 7 and 11 <= c <= 15)
                 if not es_posicion_capsula and not es_dentro_casa:
                     puntos.append([c + 0.5, f + 0.5])
-                    
+    
+    total_puntos = len(puntos)
+    musica_juego_etapa = 1
+    
     # Estructura del Fantasma: [X, Z, DirX, DirZ, ColorRGB, CasaX, CasaZ, Es_Ojos_Regresando, Tiempo_Salida]
     fantasmas = [
         [13.5, 6.5, 0.0, -0.04, (0.9, 0.2, 0.2), 13.5, 6.5, False, 0.0],   # Blinky (Rojo)
@@ -438,6 +499,40 @@ def obtener_direcciones_libres(fx, fz):
         if not verificar_colision(fx + dx * 4, fz + dz * 4): pasillos_libres.append((dx, dz))
     return pasillos_libres
 
+
+def obtener_siguiente_direccion_retorno(fx, fz, vel_actual):
+    from collections import deque
+    start = (int(fx), int(fz))
+    objetivo = (13, 6)
+    if start == objetivo:
+        return 0.0, 0.0
+
+    cola = deque([start])
+    anterior = {start: None}
+    while cola:
+        x, z = cola.popleft()
+        for dx, dz in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
+            nx, nz = x + dx, z + dz
+            if 0 <= nx < ANCHO_MAPA and 0 <= nz < ALTO_MAPA and MAPA[nz][nx] == 0 and (nx, nz) not in anterior:
+                anterior[(nx, nz)] = (x, z)
+                if (nx, nz) == objetivo:
+                    cola.clear()
+                    break
+                cola.append((nx, nz))
+
+    if objetivo not in anterior:
+        return 0.0, 0.0
+
+    paso = objetivo
+    while anterior[paso] != start:
+        paso = anterior[paso]
+        if paso is None:
+            return 0.0, 0.0
+
+    dir_x = paso[0] - start[0]
+    dir_z = paso[1] - start[1]
+    return math.copysign(vel_actual, dir_x) if dir_x != 0 else 0.0, math.copysign(vel_actual, dir_z) if dir_z != 0 else 0.0
+
 # ==============================================================================
 # 5. RENDERIZADO INTERFAZ 2D (HUD, MENÚS Y RÉCORDS)
 # ==============================================================================
@@ -453,16 +548,36 @@ def setup_ortho():
 def restore_perspective():
     glEnable(GL_DEPTH_TEST); glPopMatrix(); glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(GL_MODELVIEW)
 
-def draw_styled_button(rect, texture_id, text, r, g, b):
-    glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, texture_id); glColor3f(1.0, 1.0, 1.0)
-    glBegin(GL_QUADS)
-    glTexCoord2f(0.0, 0.0); glVertex2f(rect[0], rect[1])
-    glTexCoord2f(1.0, 0.0); glVertex2f(rect[0] + rect[2], rect[1])
-    glTexCoord2f(1.0, 1.0); glVertex2f(rect[0] + rect[2], rect[1] + rect[3])
-    glTexCoord2f(0.0, 1.0); glVertex2f(rect[0], rect[1] + rect[3])
-    glEnd(); glDisable(GL_TEXTURE_2D)
 
-    glLineWidth(2.0); glColor3f(0.0, 0.85, 1.0)
+def hay_texturas_pendientes():
+    comprobadas = ['id_textura_menu','id_textura_boton','id_textura_titulo_menu','id_textura_corazon','id_textura_game_over','id_textura_pausa']
+    for k in comprobadas:
+        if k in globals() and globals()[k] == 0:
+            return True
+    return False
+
+def draw_styled_button(rect, texture_id, text, r, g, b):
+    if texture_id and texture_id != 0:
+        glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, texture_id); glColor3f(1.0, 1.0, 1.0)
+        glBegin(GL_QUADS)
+        glTexCoord2f(0.0, 0.0); glVertex2f(rect[0], rect[1])
+        glTexCoord2f(1.0, 0.0); glVertex2f(rect[0] + rect[2], rect[1])
+        glTexCoord2f(1.0, 1.0); glVertex2f(rect[0] + rect[2], rect[1] + rect[3])
+        glTexCoord2f(0.0, 1.0); glVertex2f(rect[0], rect[1] + rect[3])
+        glEnd(); glDisable(GL_TEXTURE_2D)
+    else:
+        glDisable(GL_TEXTURE_2D)
+        glColor3f(0.05, 0.4, 0.9)
+        glBegin(GL_QUADS)
+        glVertex2f(rect[0], rect[1]); glVertex2f(rect[0] + rect[2], rect[1]); glVertex2f(rect[0] + rect[2], rect[1] + rect[3]); glVertex2f(rect[0], rect[1] + rect[3])
+        glEnd()
+        glColor4f(0.0, 0.0, 0.0, 0.25)
+        glBegin(GL_QUADS)
+        glVertex2f(rect[0] + 4, rect[1] + 4); glVertex2f(rect[0] + rect[2] - 4, rect[1] + 4)
+        glVertex2f(rect[0] + rect[2] - 4, rect[1] + rect[3] - 4); glVertex2f(rect[0] + 4, rect[1] + rect[3] - 4)
+        glEnd()
+
+    glLineWidth(4.0); glColor3f(1.0, 1.0, 1.0)
     glBegin(GL_LINE_LOOP)
     glVertex2f(rect[0], rect[1]); glVertex2f(rect[0] + rect[2], rect[1])
     glVertex2f(rect[0] + rect[2], rect[1] + rect[3]); glVertex2f(rect[0], rect[1] + rect[3])
@@ -473,6 +588,21 @@ def draw_styled_button(rect, texture_id, text, r, g, b):
     tx = rect[0] + (rect[2] / 2) - (ancho_texto_aprox / 2)
     ty = rect[1] + (rect[3] / 2) - 7
     render_bitmap_string(tx, ty, GLUT_BITMAP_HELVETICA_18, text)
+
+
+def draw_button_texture(rect, texture_id):
+    if texture_id and texture_id != 0:
+        glEnable(GL_TEXTURE_2D)
+        glBindTexture(GL_TEXTURE_2D, texture_id)
+        glColor3f(1.0, 1.0, 1.0)
+        glBegin(GL_QUADS)
+        glTexCoord2f(0.0, 0.0); glVertex2f(rect[0], rect[1])
+        glTexCoord2f(1.0, 0.0); glVertex2f(rect[0] + rect[2], rect[1])
+        glTexCoord2f(1.0, 1.0); glVertex2f(rect[0] + rect[2], rect[1] + rect[3])
+        glTexCoord2f(0.0, 1.0); glVertex2f(rect[0], rect[1] + rect[3])
+        glEnd(); glDisable(GL_TEXTURE_2D)
+    else:
+        draw_styled_button(rect, 0, "", 1.0, 1.0, 1.0)
 
 
 def dibujar_minimapa():
@@ -513,6 +643,18 @@ def dibujar_minimapa():
                 glVertex2f(px, py + cell_h)
                 glEnd()
 
+    glColor3f(1.0, 0.4, 0.8)
+    capsula_radio = min(cell_w, cell_h) * 0.14
+    for cap in capsulas_poder:
+        cap_x = x0 + cap[0] * cell_w
+        cap_y = y0 + minimapa_h - cap[1] * cell_h
+        glBegin(GL_QUADS)
+        glVertex2f(cap_x - capsula_radio, cap_y - capsula_radio)
+        glVertex2f(cap_x + capsula_radio, cap_y - capsula_radio)
+        glVertex2f(cap_x + capsula_radio, cap_y + capsula_radio)
+        glVertex2f(cap_x - capsula_radio, cap_y + capsula_radio)
+        glEnd()
+
     glColor3f(1.0, 1.0, 0.0)
     punto_radio = min(cell_w, cell_h) * 0.10
     for p in puntos:
@@ -549,26 +691,36 @@ def dibujar_minimapa():
 
 def renderizar_menu_principal():
     setup_ortho()
-    glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, id_textura_menu); glColor3f(1.0, 1.0, 1.0)
-    glBegin(GL_QUADS)
-    glTexCoord2f(0.0, 0.0); glVertex2f(0, 0); glTexCoord2f(1.0, 0.0); glVertex2f(ventana_ancho, 0)
-    glTexCoord2f(1.0, 1.0); glVertex2f(ventana_ancho, ventana_alto); glTexCoord2f(0.0, 1.0); glVertex2f(0, ventana_alto)
-    glEnd()
+    # Background (textured if available, fallback solid if not)
+    if 'id_textura_menu' in globals() and id_textura_menu and id_textura_menu != 0:
+        glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, id_textura_menu); glColor3f(1.0, 1.0, 1.0)
+        glBegin(GL_QUADS)
+        glTexCoord2f(0.0, 0.0); glVertex2f(0, 0); glTexCoord2f(1.0, 0.0); glVertex2f(ventana_ancho, 0)
+        glTexCoord2f(1.0, 1.0); glVertex2f(ventana_ancho, ventana_alto); glTexCoord2f(0.0, 1.0); glVertex2f(0, ventana_alto)
+        glEnd(); glDisable(GL_TEXTURE_2D)
+    else:
+        glColor3f(0.03, 0.03, 0.04); glBegin(GL_QUADS)
+        glVertex2f(0, 0); glVertex2f(ventana_ancho, 0); glVertex2f(ventana_ancho, ventana_alto); glVertex2f(0, ventana_alto)
+        glEnd()
 
     titulo_w = 600; titulo_h = 200
     titulo_x = ventana_ancho / 2 - titulo_w / 2
     titulo_y = ventana_alto - 80 - titulo_h
-    glBindTexture(GL_TEXTURE_2D, id_textura_titulo_menu); glColor3f(1.0, 1.0, 1.0)
-    glBegin(GL_QUADS)
-    glTexCoord2f(0.0, 0.0); glVertex2f(titulo_x, titulo_y)
-    glTexCoord2f(1.0, 0.0); glVertex2f(titulo_x + titulo_w, titulo_y)
-    glTexCoord2f(1.0, 1.0); glVertex2f(titulo_x + titulo_w, titulo_y + titulo_h)
-    glTexCoord2f(0.0, 1.0); glVertex2f(titulo_x, titulo_y + titulo_h)
-    glEnd(); glDisable(GL_TEXTURE_2D)
+    if 'id_textura_titulo_menu' in globals() and id_textura_titulo_menu and id_textura_titulo_menu != 0:
+        glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, id_textura_titulo_menu); glColor3f(1.0, 1.0, 1.0)
+        glBegin(GL_QUADS)
+        glTexCoord2f(0.0, 0.0); glVertex2f(titulo_x, titulo_y)
+        glTexCoord2f(1.0, 0.0); glVertex2f(titulo_x + titulo_w, titulo_y)
+        glTexCoord2f(1.0, 1.0); glVertex2f(titulo_x + titulo_w, titulo_y + titulo_h)
+        glTexCoord2f(0.0, 1.0); glVertex2f(titulo_x, titulo_y + titulo_h)
+        glEnd(); glDisable(GL_TEXTURE_2D)
+    else:
+        glColor3f(1.0, 1.0, 0.0)
+        render_bitmap_string(ventana_ancho/2 - 220, titulo_y + titulo_h/2 - 24, GLUT_BITMAP_TIMES_ROMAN_24, "PAC-MAN (MENU)")
 
-    draw_styled_button(boton_jugar_rect,   id_textura_boton, "JUGAR",          1.0, 1.0, 0.0)
-    draw_styled_button(boton_records_rect, id_textura_boton, "PUNTUACIONES",   1.0, 1.0, 1.0)
-    draw_styled_button(boton_salir_rect,   id_textura_boton, "SALIR",          0.9, 0.1, 0.1)
+    draw_button_texture(boton_jugar_rect, id_textura_boton_jugar)
+    draw_button_texture(boton_records_rect, id_textura_boton_puntuacion)
+    draw_button_texture(boton_salir_rect, id_textura_boton_salir)
 
     texto_mute = "AUDIO: MUTED" if juego_muteado else "MUTEAR"
     draw_styled_button(boton_mute_rect, id_textura_boton, texto_mute, 1.0, 1.0, 1.0)
@@ -591,6 +743,10 @@ def renderizar_menu_principal():
 
     glColor3f(1.0, 1.0, 1.0)
     render_bitmap_string(barra_volumen_rect[0], barra_volumen_rect[1] + 26, GLUT_BITMAP_HELVETICA_12, f"VOLUMEN: {int(volumen_actual*100)}%")
+
+    if hay_texturas_pendientes():
+        glColor3f(1.0, 0.9, 0.0)
+        render_bitmap_string(ventana_ancho/2 - 120, 40, GLUT_BITMAP_HELVETICA_18, "Recargando recursos...")
 
     restore_perspective()
 
@@ -617,13 +773,24 @@ def renderizar_hud_interfaz():
     setup_ortho()
     
     if estado_actual in (ESTADO_JUEGO, ESTADO_MUERTE, ESTADO_INTRO):
-        glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, id_textura_corazon); glColor3f(1.0, 1.0, 1.0)
-        for i in range(pacman_vidas):
-            glPushMatrix(); glTranslatef(30 + (45 * i), ventana_alto - 50, 0); glBegin(GL_QUADS)
-            glTexCoord2f(0.0, 0.0); glVertex2f(0, 0); glTexCoord2f(1.0, 0.0); glVertex2f(32, 0)
-            glTexCoord2f(1.0, 1.0); glVertex2f(32, 32); glTexCoord2f(0.0, 1.0); glVertex2f(0, 32)
-            glEnd(); glPopMatrix()
-        glDisable(GL_TEXTURE_2D)
+        if 'id_textura_corazon' in globals() and id_textura_corazon and id_textura_corazon != 0:
+            glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, id_textura_corazon); glColor3f(1.0, 1.0, 1.0)
+            for i in range(pacman_vidas):
+                glPushMatrix(); glTranslatef(30 + (45 * i), ventana_alto - 50, 0); glBegin(GL_QUADS)
+                glTexCoord2f(0.0, 0.0); glVertex2f(0, 0); glTexCoord2f(1.0, 0.0); glVertex2f(32, 0)
+                glTexCoord2f(1.0, 1.0); glVertex2f(32, 32); glTexCoord2f(0.0, 1.0); glVertex2f(0, 32)
+                glEnd(); glPopMatrix()
+            glDisable(GL_TEXTURE_2D)
+        else:
+            glColor3f(1.0, 0.6, 0.0)
+            for i in range(pacman_vidas):
+                x = 30 + (45 * i)
+                y = ventana_alto - 50
+                glBegin(GL_TRIANGLES)
+                glVertex2f(x + 16, y + 24)
+                glVertex2f(x + 4, y + 6)
+                glVertex2f(x + 28, y + 6)
+                glEnd()
         
         # Caja Score
         glColor4f(0.0, 0.0, 0.0, 0.65); glBegin(GL_QUADS); glVertex2f(ventana_ancho - 250, ventana_alto - 60); glVertex2f(ventana_ancho - 20, ventana_alto - 60); glVertex2f(ventana_ancho - 20, ventana_alto - 15); glVertex2f(ventana_ancho - 250, ventana_alto - 15); glEnd()
@@ -644,22 +811,37 @@ def renderizar_hud_interfaz():
 
     elif estado_actual == ESTADO_PAUSA:
         glColor4f(0.0, 0.0, 0.0, 0.75); glBegin(GL_QUADS); glVertex2f(0, 0); glVertex2f(ventana_ancho, 0); glVertex2f(ventana_ancho, ventana_alto); glVertex2f(0, ventana_alto); glEnd()
-        glColor3f(1.0, 1.0, 0.0); render_bitmap_string(int(ventana_ancho/2) - 60, int(ventana_alto/2) + 120, GLUT_BITMAP_TIMES_ROMAN_24, "PAUSA")
-        draw_styled_button(boton_reanudar_rect,    id_textura_boton, "REANUDAR",           0.2, 1.0, 0.2)
-        draw_styled_button(boton_menu_pausa_rect,  id_textura_boton, "MENU PRINCIPAL",     1.0, 1.0, 1.0)
-        draw_styled_button(boton_salir_pausa_rect, id_textura_boton, "SALIR DEL JUEGO",   0.9, 0.1, 0.1)
+        if id_textura_pausa and id_textura_pausa != 0:
+            pausa_w = 420
+            pausa_h = 144
+            pausa_x = ventana_ancho / 2 - pausa_w / 2
+            pausa_y = ventana_alto / 2 + 120
+            glEnable(GL_TEXTURE_2D)
+            glBindTexture(GL_TEXTURE_2D, id_textura_pausa)
+            glColor3f(1.0, 1.0, 1.0)
+            glBegin(GL_QUADS)
+            glTexCoord2f(0.0, 0.0); glVertex2f(pausa_x, pausa_y)
+            glTexCoord2f(1.0, 0.0); glVertex2f(pausa_x + pausa_w, pausa_y)
+            glTexCoord2f(1.0, 1.0); glVertex2f(pausa_x + pausa_w, pausa_y + pausa_h)
+            glTexCoord2f(0.0, 1.0); glVertex2f(pausa_x, pausa_y + pausa_h)
+            glEnd(); glDisable(GL_TEXTURE_2D)
+        else:
+            glColor3f(1.0, 1.0, 0.0); render_bitmap_string(int(ventana_ancho/2) - 60, int(ventana_alto/2) + 120, GLUT_BITMAP_TIMES_ROMAN_24, "PAUSA")
+        draw_button_texture(boton_reanudar_rect, id_textura_boton_reanudar)
+        draw_button_texture(boton_menu_pausa_rect, id_textura_boton_menu_principal)
+        draw_button_texture(boton_salir_pausa_rect, id_textura_boton_salir_del_juego)
 
     elif estado_actual == ESTADO_GAME_OVER:
         glColor4f(0.0, 0.0, 0.0, 0.80); glBegin(GL_QUADS); glVertex2f(0, 0); glVertex2f(ventana_ancho, 0); glVertex2f(ventana_ancho, ventana_alto); glVertex2f(0, ventana_alto); glEnd()
-        img_go_w = 600; img_go_h = 220; img_go_x = ventana_ancho / 2 - img_go_w / 2; img_go_y = ventana_alto / 2 - 80
+        img_go_w = 600; img_go_h = 220; img_go_x = ventana_ancho / 2 - img_go_w / 2; img_go_y = ventana_alto / 2 + 80
         glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, id_textura_game_over); glColor3f(1.0, 1.0, 1.0)
         glBegin(GL_QUADS)
         glTexCoord2f(0.0, 0.0); glVertex2f(img_go_x, img_go_y); glTexCoord2f(1.0, 0.0); glVertex2f(img_go_x + img_go_w, img_go_y)
         glTexCoord2f(1.0, 1.0); glVertex2f(img_go_x + img_go_w, img_go_y + img_go_h); glTexCoord2f(0.0, 1.0); glVertex2f(img_go_x, img_go_y + img_go_h)
         glEnd(); glDisable(GL_TEXTURE_2D)
-        draw_styled_button(boton_reiniciar_go_rect, id_textura_boton, "VOLVER A JUGAR",      1.0, 1.0, 0.0)
-        draw_styled_button(boton_menu_go_rect,      id_textura_boton, "MENU PRINCIPAL",      1.0, 1.0, 1.0)
-        draw_styled_button(boton_salir_go_rect,     id_textura_boton, "SALIR DEL JUEGO",    0.9, 0.1, 0.1)
+        draw_button_texture(boton_reiniciar_go_rect, id_textura_boton_volver_a_jugar)
+        draw_button_texture(boton_menu_go_rect,      id_textura_boton_menu_principal)
+        draw_button_texture(boton_salir_go_rect,     id_textura_boton_salir_del_juego)
 
     elif estado_actual == ESTADO_VICTORIA:
         glColor4f(0.0, 0.0, 0.0, 0.80); glBegin(GL_QUADS); glVertex2f(0, 0); glVertex2f(ventana_ancho, 0); glVertex2f(ventana_ancho, ventana_alto); glVertex2f(0, ventana_alto); glEnd()
@@ -703,7 +885,7 @@ def procesar_teclado_navegacion(window):
 # ==============================================================================
 def main():
     global puntaje, pacman_vidas, pacman_x, pacman_z, estado_actual, puntos, fantasmas, capsulas_poder, fantasmas_asustados, tiempo_fantasmas_asustados, tiempo_inicio_muerte, tiempo_inicio_intro, tiempo_inicio_juego
-    global boca_angulo, boca_abriendo, id_textura_muro, id_textura_piso, id_textura_arbol, id_textura_piso_exterior, id_textura_corazon, id_textura_menu, id_textura_boton, id_textura_titulo_menu, id_textura_game_over, pacman_invulnerable, pacman_tiempo_invulnerable, record_guardado
+    global boca_angulo, boca_abriendo, id_textura_muro, id_textura_piso, id_textura_arbol, id_textura_piso_exterior, id_textura_corazon, id_textura_menu, id_textura_boton, id_textura_boton_jugar, id_textura_boton_menu_principal, id_textura_boton_puntuacion, id_textura_boton_reanudar, id_textura_boton_salir, id_textura_boton_salir_del_juego, id_textura_boton_volver_a_jugar, id_textura_titulo_menu, id_textura_game_over, id_textura_pausa, pacman_invulnerable, pacman_tiempo_invulnerable, record_guardado
     global musica_actual, fx_comer, fx_muerte, fx_retorno, en_pausa_fantasma, tiempo_pausa_fantasma
     
     if not glfw.init(): return
@@ -724,10 +906,20 @@ def main():
     id_textura_arbol         = cargar_textura_imagen("textura_arbol.png")
     id_textura_piso_exterior   = cargar_textura_imagen("textura_piso_exterior.png") 
     id_textura_corazon         = cargar_textura_imagen("textura_corazon.png") 
-    id_textura_menu            = cargar_textura_imagen("textura_menu.png")
-    id_textura_boton           = cargar_textura_imagen("textura_boton.png")
-    id_textura_titulo_menu     = cargar_textura_imagen("titulo_menu.png")
-    id_textura_game_over       = cargar_textura_imagen("game_over.png")
+    id_textura_menu                    = cargar_textura_imagen("textura_menu.png")
+    id_textura_boton                   = cargar_textura_imagen("textura_boton.png")
+    id_textura_boton_jugar             = cargar_textura_imagen("boton_jugar.png")
+    id_textura_boton_menu_principal    = cargar_textura_imagen("boton_menuPrincipal.png")
+    id_textura_boton_puntuacion        = cargar_textura_imagen("boton_puntuacion.png")
+    id_textura_boton_reanudar          = cargar_textura_imagen("boton_reanudar.png")
+    id_textura_boton_salir             = cargar_textura_imagen("boton_salir.png")
+    id_textura_boton_salir_del_juego   = cargar_textura_imagen("boton_salirDelJuego.png")
+    id_textura_boton_volver_a_jugar    = cargar_textura_imagen("boton_volverAjugar.png")
+    id_textura_titulo_menu             = cargar_textura_imagen("titulo_menu.png")
+    id_textura_game_over               = cargar_textura_imagen("game_over.png")
+    id_textura_pausa                   = cargar_textura_imagen("pausa.png")
+    if id_textura_pausa == 0:
+        print("Warning: no se pudo cargar pausa.png, se usará texto de fallback en PAUSA")
 
     compilar_geometria_estatica()
 
@@ -751,7 +943,8 @@ def main():
                 try:
                     mixer.music.load("sonido_menu.mp3") 
                     mixer.music.play(-1) 
-                except: pass
+                except Exception as e:
+                    print(f"Warning: no se pudo cargar 'sonido_menu.mp3': {e}")
                 musica_actual = "menu"
             renderizar_menu_principal(); procesar_teclado_navegacion(window)
             
@@ -766,7 +959,8 @@ def main():
                     try:
                         mixer.music.load("sonido_intro.mp3") 
                         mixer.music.play(0) 
-                    except: pass
+                    except Exception as e:
+                        print(f"Warning: no se pudo cargar 'sonido_intro.mp3': {e}")
                     musica_actual = "intro"
                 if tiempo_actual - tiempo_inicio_intro > 4.2:
                     estado_actual = ESTADO_JUEGO
@@ -774,23 +968,25 @@ def main():
 
             elif estado_actual == ESTADO_JUEGO:
                 if musica_actual == "pausa":
-                    mixer.music.unpause() 
-                    musica_actual = "juego"
-                elif musica_actual != "juego":
-                    mixer.music.stop()
-                    try:
-                        mixer.music.load("sonido_juego.ogg") 
-                        mixer.music.play(-1)
-                    except: pass
-                    musica_actual = "juego"
+                    mixer.music.unpause()
+                    musica_actual = musica_anterior_pausa or "juego"
+                    musica_anterior_pausa = None
+                elif musica_actual not in ("juego", "fantasma_asustado"):
+                    reproducir_musica_juego_etapa(1)
+
+                if fantasmas_asustados:
+                    reproducir_musica_fantasma_asustado()
+                else:
+                    restablecer_musica_juego_por_progreso()
             elif estado_actual == ESTADO_PAUSA:
-                if musica_actual == "juego":
-                    mixer.music.pause() 
+                if musica_actual in ("juego", "fantasma_asustado"):
+                    mixer.music.pause()
+                    musica_anterior_pausa = musica_actual
                     musica_actual = "pausa"
             elif estado_actual == ESTADO_MUERTE:
-                if musica_actual == "juego":
-                    mixer.music.stop() 
-                    try: fx_muerte.play() 
+                if musica_actual in ("juego", "fantasma_asustado"):
+                    mixer.music.stop()
+                    try: fx_muerte.play()
                     except: pass
                     musica_actual = "muerte"
             elif estado_actual == ESTADO_GAME_OVER:
@@ -802,7 +998,7 @@ def main():
                     except: pass
                     musica_actual = "game_over"
             elif estado_actual == ESTADO_VICTORIA:
-                if musica_actual == "juego":
+                if musica_actual in ("juego", "fantasma_asustado"):
                     mixer.music.stop()
                     musica_actual = "victoria"
 
@@ -810,8 +1006,8 @@ def main():
             gluPerspective(60, float(ventana_ancho)/float(ventana_alto), 0.1, 100.0)
             glMatrixMode(GL_MODELVIEW); glLoadIdentity()
             
-            cam_x = pacman_x if estado_actual in (ESTADO_JUEGO, ESTADO_MUERTE, ESTADO_INTRO) else 1.5
-            cam_z = pacman_z if estado_actual in (ESTADO_JUEGO, ESTADO_MUERTE, ESTADO_INTRO) else 1.5
+            cam_x = pacman_x if estado_actual in (ESTADO_JUEGO, ESTADO_MUERTE, ESTADO_INTRO, ESTADO_PAUSA) else 1.5
+            cam_z = pacman_z if estado_actual in (ESTADO_JUEGO, ESTADO_MUERTE, ESTADO_INTRO, ESTADO_PAUSA) else 1.5
             gluLookAt(cam_x, 6.2, cam_z + 4.8, cam_x, 0.2, cam_z, 0.0, 1.0, 0.0)
 
             draw_floor_textured(); draw_jungle_background(); glCallList(lista_muros_id)
@@ -943,13 +1139,29 @@ def main():
                             if caminos_libres:
                                 mejor_opcion = caminos_libres[0]
                                 if f[7]:
-                                    # CASO OJOS: Retorno óptimo guiado al cuarto central
-                                    min_distancia = float('inf')
+                                    # CASO OJOS: Priorizar paso directo hacia la base (13.5,6.5), fallback a BFS si está bloqueado
+                                    dir_x = 13.5 - f[0]
+                                    dir_z = 6.5 - f[1]
+                                    prefer_x = abs(dir_x) >= abs(dir_z)
+                                    step_x = math.copysign(vel_actual, dir_x) if dir_x != 0 and prefer_x else 0.0
+                                    step_z = math.copysign(vel_actual, dir_z) if dir_z != 0 and not prefer_x else 0.0
+                                    elegido = False
                                     for dx, dz, cx, cz in caminos_libres:
-                                        dist = (cx + 0.5 - 13.5)**2 + (cz + 0.5 - 6.5)**2
-                                        if dist < min_distancia:
-                                            min_distancia = dist    
-                                            mejor_opcion = (dx, dz)
+                                        if step_x != 0 and dx != 0 and math.copysign(1.0, dx) == math.copysign(1.0, step_x):
+                                            mejor_opcion = (dx, dz); elegido = True; break
+                                        if step_z != 0 and dz != 0 and math.copysign(1.0, dz) == math.copysign(1.0, step_z):
+                                            mejor_opcion = (dx, dz); elegido = True; break
+                                    if not elegido:
+                                        dir_retorno = obtener_siguiente_direccion_retorno(f[0], f[1], vel_actual)
+                                        if dir_retorno != (0.0, 0.0):
+                                            mejor_opcion = dir_retorno
+                                        else:
+                                            min_distancia = float('inf')
+                                            for dx, dz, cx, cz in caminos_libres:
+                                                dist = (cx + 0.5 - 13.5)**2 + (cz + 0.5 - 6.5)**2
+                                                if dist < min_distancia:
+                                                    min_distancia = dist
+                                                    mejor_opcion = (dx, dz)
                                 elif fantasmas_asustados:
                                     # CASO BOLA ROSA: Maximizar la distancia euclidiana respecto a Pac-Man (Huida real)
                                     max_distancia = -1.0
@@ -1036,7 +1248,7 @@ def main():
                     glPushMatrix(); glTranslatef(pacman_x, 0.22, pacman_z)
                     glRotatef(pacman_angulo_rotacion, 0.0, 1.0, 0.0); draw_pacman_final(0.30, boca_angulo); glPopMatrix()
 
-                if len(puntos) == 0 and len(capsulas_poder) == 0:
+                if len(puntos) == 0:
                     estado_actual = ESTADO_VICTORIA
                     if not record_guardado: guardar_puntaje(puntaje); record_guardado = True
 
