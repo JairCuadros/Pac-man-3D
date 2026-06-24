@@ -61,6 +61,7 @@ fx_comer = None
 fx_muerte = None
 fx_retorno = None
 fx_pausa = None
+fx_victoria = None
 
 volumen_actual = 0.5
 juego_muteado = False
@@ -102,6 +103,11 @@ DURACION_INMUNIDAD = 3.0
 ventana_ancho = 1000  
 ventana_alto = 700
 
+# Dimensiones del HUD de puntuación (para plantilla y reutilización)
+CUADRO_PUNTOS_ANCHO = 280
+CUADRO_PUNTOS_ALTO = 70
+CUADRO_PUNTOS_MARGEN = 20
+
 # IDs de Texturas
 id_textura_muro = 0 
 id_textura_piso = 0 
@@ -121,6 +127,10 @@ id_textura_titulo_menu = 0
 id_textura_game_over = 0    
 id_textura_pausa = 0        
 id_textura_cuadro_puntuacion = 0
+id_textura_titulo_victoria = 0
+id_textura_preparate = 0
+id_textura_preparate_ancho = 0
+id_textura_preparate_alto = 0
 
 # IDs de las Listas de Visualización de OpenGL
 lista_muros_id = 0
@@ -209,6 +219,15 @@ def mouse_click_callback(window, button, action, mods):
                 tiempo_inicio_intro = glfw.get_time()
             elif punto_en_rectangulo(x, y, boton_menu_go_rect): estado_actual = ESTADO_MENU
             elif punto_en_rectangulo(x, y, boton_salir_go_rect): glfw.set_window_should_close(window, True)
+        elif estado_actual == ESTADO_VICTORIA:
+            if punto_en_rectangulo(x, y, boton_reiniciar_go_rect):
+                inicializar_juego()
+                estado_actual = ESTADO_INTRO
+                tiempo_inicio_intro = glfw.get_time()
+            elif punto_en_rectangulo(x, y, boton_menu_go_rect):
+                estado_actual = ESTADO_MENU
+            elif punto_en_rectangulo(x, y, boton_salir_go_rect):
+                glfw.set_window_should_close(window, True)
 
 def punto_en_rectangulo(px, py, rect):
     """ Función auxiliar de colisión de ratón (punto contra rectángulo) """
@@ -817,10 +836,10 @@ def renderizar_hud_interfaz():
                 glEnd()
         
         # Caja Score - usando textura de cuadro_puntuacion en la esquina superior derecha
-        cuadro_w = 280
-        cuadro_h = 70
-        cuadro_x = ventana_ancho - cuadro_w - 20
-        cuadro_y = ventana_alto - cuadro_h - 20
+        cuadro_w = CUADRO_PUNTOS_ANCHO
+        cuadro_h = CUADRO_PUNTOS_ALTO
+        cuadro_x = ventana_ancho - cuadro_w - CUADRO_PUNTOS_MARGEN
+        cuadro_y = ventana_alto - cuadro_h - CUADRO_PUNTOS_MARGEN
         if 'id_textura_cuadro_puntuacion' in globals() and id_textura_cuadro_puntuacion and id_textura_cuadro_puntuacion != 0:
             glEnable(GL_TEXTURE_2D)
             glBindTexture(GL_TEXTURE_2D, id_textura_cuadro_puntuacion)
@@ -834,22 +853,23 @@ def renderizar_hud_interfaz():
         else:
             glColor4f(0.0, 0.0, 0.0, 0.75); glBegin(GL_QUADS); glVertex2f(cuadro_x, cuadro_y); glVertex2f(cuadro_x + cuadro_w, cuadro_y); glVertex2f(cuadro_x + cuadro_w, cuadro_y + cuadro_h); glVertex2f(cuadro_x, cuadro_y + cuadro_h); glEnd()
 
-        texto_label = "PUNTOS"
+        texto_label = "PUNTOS :"
         texto_score = f"{puntaje:05d}"
-        base_x = cuadro_x + cuadro_w / 2
-        label_y = cuadro_y + cuadro_h - 28
-        score_y = cuadro_y + 20
         label_width = len(texto_label) * 10
         score_width = len(texto_score) * 12
-        label_x = base_x - (label_width / 2)
-        score_x = base_x - (score_width / 2)
+        espacio_texto = 18
+        total_width = label_width + espacio_texto + score_width
+        base_x = cuadro_x + cuadro_w / 2
+        label_x = base_x - (total_width / 2)
+        score_x = label_x + label_width + espacio_texto
+        linea_y = cuadro_y + cuadro_h / 2 - 6
 
         glColor4f(0.0, 0.0, 0.0, 0.85)
-        render_bitmap_string(label_x + 2, label_y - 2, GLUT_BITMAP_HELVETICA_18, texto_label)
-        render_bitmap_string(score_x + 3, score_y - 3, GLUT_BITMAP_TIMES_ROMAN_24, texto_score)
+        render_bitmap_string(label_x + 2, linea_y - 2, GLUT_BITMAP_HELVETICA_18, texto_label)
+        render_bitmap_string(score_x + 3, linea_y - 3, GLUT_BITMAP_TIMES_ROMAN_24, texto_score)
         glColor3f(1.0, 0.95, 0.4)
-        render_bitmap_string(label_x, label_y, GLUT_BITMAP_HELVETICA_18, texto_label)
-        render_bitmap_string(score_x, score_y, GLUT_BITMAP_TIMES_ROMAN_24, texto_score)
+        render_bitmap_string(label_x, linea_y, GLUT_BITMAP_HELVETICA_18, texto_label)
+        render_bitmap_string(score_x, linea_y, GLUT_BITMAP_TIMES_ROMAN_24, texto_score)
 
         dibujar_minimapa()
 
@@ -857,8 +877,32 @@ def renderizar_hud_interfaz():
             pass
         
         if estado_actual == ESTADO_INTRO:
-            glColor3f(1.0, 1.0, 0.0)
-            render_bitmap_string(int(ventana_ancho/2) - 80, int(ventana_alto/2), GLUT_BITMAP_TIMES_ROMAN_24, "¡PREPARATE!")
+            if 'id_textura_preparate' in globals() and id_textura_preparate and id_textura_preparate != 0:
+                if id_textura_preparate_ancho > 0 and id_textura_preparate_alto > 0:
+                    aspect = float(id_textura_preparate_ancho) / float(id_textura_preparate_alto)
+                else:
+                    aspect = 4.5
+                max_h = min(260.0, ventana_alto * 0.55)
+                quad_h = max_h
+                quad_w = quad_h * aspect * 0.85
+                max_w = ventana_ancho * 4
+                if quad_w > max_w:
+                    quad_w = max_w
+                    quad_h = quad_w / (aspect * 0.85)
+                quad_x = ventana_ancho / 2 - quad_w / 2
+                quad_y = ventana_alto / 2 - quad_h / 2
+                glEnable(GL_TEXTURE_2D)
+                glBindTexture(GL_TEXTURE_2D, id_textura_preparate)
+                glColor3f(1.0, 1.0, 1.0)
+                glBegin(GL_QUADS)
+                glTexCoord2f(0.0, 0.0); glVertex2f(quad_x, quad_y)
+                glTexCoord2f(1.0, 0.0); glVertex2f(quad_x + quad_w, quad_y)
+                glTexCoord2f(1.0, 1.0); glVertex2f(quad_x + quad_w, quad_y + quad_h)
+                glTexCoord2f(0.0, 1.0); glVertex2f(quad_x, quad_y + quad_h)
+                glEnd(); glDisable(GL_TEXTURE_2D)
+            else:
+                glColor3f(1.0, 1.0, 0.0)
+                render_bitmap_string(int(ventana_ancho/2) - 80, int(ventana_alto/2), GLUT_BITMAP_TIMES_ROMAN_24, "¡PREPARATE!")
 
     elif estado_actual == ESTADO_PAUSA:
         glColor4f(0.0, 0.0, 0.0, 0.75); glBegin(GL_QUADS); glVertex2f(0, 0); glVertex2f(ventana_ancho, 0); glVertex2f(ventana_ancho, ventana_alto); glVertex2f(0, ventana_alto); glEnd()
@@ -896,10 +940,40 @@ def renderizar_hud_interfaz():
 
     elif estado_actual == ESTADO_VICTORIA:
         glColor4f(0.0, 0.0, 0.0, 0.80); glBegin(GL_QUADS); glVertex2f(0, 0); glVertex2f(ventana_ancho, 0); glVertex2f(ventana_ancho, ventana_alto); glVertex2f(0, ventana_alto); glEnd()
-        glLineWidth(4.0); glColor3f(0.0, 0.85, 1.0); glBegin(GL_LINE_LOOP); glVertex2f(ventana_ancho/2 - 280, ventana_alto/2 - 120); glVertex2f(ventana_ancho/2 + 280, ventana_alto/2 - 120); glVertex2f(ventana_ancho/2 + 280, ventana_alto/2 + 120); glVertex2f(ventana_ancho/2 - 280, ventana_alto/2 + 120); glEnd()
-        glColor3f(0.2, 1.0, 0.2); render_bitmap_string(int(ventana_ancho/2) - 150, int(ventana_alto/2) + 60, GLUT_BITMAP_TIMES_ROMAN_24, "¡VICTORIA CONQUISTADA!")
-        glColor3f(1.0, 1.0, 1.0); render_bitmap_string(int(ventana_ancho/2) - 100, int(ventana_alto/2), GLUT_BITMAP_TIMES_ROMAN_24, f"PUNTAJE FINAL: {puntaje:05d}")
-        glColor3f(0.7, 0.7, 0.7); render_bitmap_string(int(ventana_ancho/2) - 130, int(ventana_alto/2) - 80, GLUT_BITMAP_9_BY_15, "PRESIONA ESC PARA VOLVER AL MENU")
+        
+
+        # Escalar y posicionar logo de victoria ligeramente más pequeño y dejar espacio para el puntaje
+        br_y = boton_reiniciar_go_rect[1]
+        br_h = boton_reiniciar_go_rect[3]
+        img_h = 140
+        img_w = int(img_h * (600.0 / 220.0))
+        img_x = ventana_ancho / 2 - img_w / 2
+        img_y = br_y + br_h + 40
+
+        if 'id_textura_titulo_victoria' in globals() and id_textura_titulo_victoria and id_textura_titulo_victoria != 0:
+            glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, id_textura_titulo_victoria); glColor3f(1.0, 1.0, 1.0)
+            glBegin(GL_QUADS)
+            glTexCoord2f(0.0, 0.0); glVertex2f(img_x, img_y)
+            glTexCoord2f(1.0, 0.0); glVertex2f(img_x + img_w, img_y)
+            glTexCoord2f(1.0, 1.0); glVertex2f(img_x + img_w, img_y + img_h)
+            glTexCoord2f(0.0, 1.0); glVertex2f(img_x, img_y + img_h)
+            glEnd(); glDisable(GL_TEXTURE_2D)
+        else:
+            glLineWidth(4.0); glColor3f(0.0, 0.85, 1.0); glBegin(GL_LINE_LOOP); glVertex2f(ventana_ancho/2 - 280, ventana_alto/2 - 120); glVertex2f(ventana_ancho/2 + 280, ventana_alto/2 - 120); glVertex2f(ventana_ancho/2 + 280, ventana_alto/2 + 120); glVertex2f(ventana_ancho/2 - 280, ventana_alto/2 + 120); glEnd()
+
+        # Puntaje final: colocarlo entre el logo y los botones
+        score_y = br_y + br_h + 12
+        score_text = f"PUNTAJE FINAL: {puntaje:05d}"
+        score_x = int(ventana_ancho/2) - (len(score_text) * 6)
+        glColor4f(0.0, 0.0, 0.0, 0.85)
+        render_bitmap_string(score_x + 2, int(score_y) - 2, GLUT_BITMAP_TIMES_ROMAN_24, score_text)
+        glColor3f(1.0, 1.0, 1.0)
+        render_bitmap_string(score_x, int(score_y), GLUT_BITMAP_TIMES_ROMAN_24, score_text)
+
+        # Reusar botones existentes: volver a jugar, menu principal, salir del juego
+        draw_button_texture(boton_reiniciar_go_rect, id_textura_boton_volver_a_jugar)
+        draw_button_texture(boton_menu_go_rect,      id_textura_boton_menu_principal)
+        draw_button_texture(boton_salir_go_rect,     id_textura_boton_salir_del_juego)
 
     restore_perspective()
 
@@ -940,8 +1014,8 @@ def procesar_teclado_navegacion(window):
 # ==============================================================================
 def main():
     global puntaje, pacman_vidas, pacman_x, pacman_z, estado_actual, puntos, fantasmas, capsulas_poder, fantasmas_asustados, tiempo_fantasmas_asustados, tiempo_inicio_muerte, tiempo_inicio_intro, tiempo_inicio_juego
-    global boca_angulo, boca_abriendo, id_textura_muro, id_textura_piso, id_textura_arbol, id_textura_piso_exterior, id_textura_corazon, id_textura_menu, id_textura_boton, id_textura_boton_jugar, id_textura_boton_menu_principal, id_textura_boton_puntuacion, id_textura_boton_reanudar, id_textura_boton_salir, id_textura_boton_salir_del_juego, id_textura_boton_volver_a_jugar, id_textura_titulo_menu, id_textura_game_over, id_textura_pausa, id_textura_cuadro_puntuacion, pacman_invulnerable, pacman_tiempo_invulnerable, record_guardado
-    global musica_actual, fx_comer, fx_muerte, fx_retorno, fx_pausa, en_pausa_fantasma, tiempo_pausa_fantasma
+    global boca_angulo, boca_abriendo, id_textura_muro, id_textura_piso, id_textura_arbol, id_textura_piso_exterior, id_textura_corazon, id_textura_menu, id_textura_boton, id_textura_boton_jugar, id_textura_boton_menu_principal, id_textura_boton_puntuacion, id_textura_boton_reanudar, id_textura_boton_salir, id_textura_boton_salir_del_juego, id_textura_boton_volver_a_jugar, id_textura_titulo_menu, id_textura_game_over, id_textura_pausa, id_textura_cuadro_puntuacion, id_textura_titulo_victoria, id_textura_preparate, pacman_invulnerable, pacman_tiempo_invulnerable, record_guardado
+    global musica_actual, fx_comer, fx_muerte, fx_retorno, fx_pausa, fx_victoria, en_pausa_fantasma, tiempo_pausa_fantasma
     
     if not glfw.init(): return
     window = glfw.create_window(ventana_ancho, ventana_alto, "Pac-Man 3D - Laberinto del Bosque", None, None)
@@ -974,6 +1048,14 @@ def main():
     id_textura_game_over               = cargar_textura_imagen("game_over.png")
     id_textura_pausa                   = cargar_textura_imagen("pausa.png")
     id_textura_cuadro_puntuacion       = cargar_textura_imagen("cuadro_puntuacion.png")
+    id_textura_titulo_victoria         = cargar_textura_imagen("titulo_victoria.png")
+    id_textura_preparate               = cargar_textura_imagen("imagen_preparate.png")
+    if os.path.exists("imagen_preparate.png"):
+        try:
+            img = Image.open("imagen_preparate.png")
+            id_textura_preparate_ancho, id_textura_preparate_alto = img.size
+        except Exception:
+            id_textura_preparate_ancho, id_textura_preparate_alto = 520, 120
     if id_textura_pausa == 0:
         print("Warning: no se pudo cargar pausa.png, se usará texto de fallback en PAUSA")
 
@@ -985,6 +1067,10 @@ def main():
         fx_muerte = mixer.Sound("sonido_muerte.wav")  
         fx_retorno = mixer.Sound("sonido_retorno.wav") 
         fx_pausa = mixer.Sound("sonido_pausa.wav")
+        try:
+            fx_victoria = mixer.Sound("sonido_victoria.wav")
+        except Exception:
+            fx_victoria = None
     except Exception as e:
         print(f"Aviso de Audio Opcional: {e}")
 
@@ -1055,8 +1141,16 @@ def main():
                     except: pass
                     musica_actual = "game_over"
             elif estado_actual == ESTADO_VICTORIA:
-                if musica_actual in ("juego", "fantasma_asustado"):
+                if musica_actual != "victoria":
                     mixer.music.stop()
+                    try:
+                        if fx_victoria:
+                            fx_victoria.play()
+                        else:
+                            mixer.music.load("sonido_victoria.mp3")
+                            mixer.music.play(0)
+                    except Exception:
+                        pass
                     musica_actual = "victoria"
 
             glMatrixMode(GL_PROJECTION); glLoadIdentity()
