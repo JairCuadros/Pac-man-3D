@@ -108,6 +108,15 @@ CUADRO_PUNTOS_ANCHO = 280
 CUADRO_PUNTOS_ALTO = 70
 CUADRO_PUNTOS_MARGEN = 20
 
+# Datos de plantilla de records
+PLANTILLA_PUNTUACION_ANCHO = 900
+PLANTILLA_PUNTUACION_ALTO = 502
+PLANTILLA_PUNTUACION_ORIG_ANCHO = 2752
+PLANTILLA_PUNTUACION_ORIG_ALTO = 1536
+PLANTILLA_PUNTUACION_NUMERO_X = 1997
+PLANTILLA_PUNTUACION_PRIMERA_Y = 590
+PLANTILLA_PUNTUACION_DY = 64
+
 # IDs de Texturas
 id_textura_muro = 0 
 id_textura_piso = 0 
@@ -798,15 +807,43 @@ def renderizar_pantalla_records():
     glColor3f(0.05, 0.1, 0.05); glBegin(GL_QUADS); glVertex2f(0, 0); glVertex2f(ventana_ancho, 0); glVertex2f(ventana_ancho, ventana_alto); glVertex2f(0, ventana_alto); glEnd()
     glLineWidth(4.0); glColor3f(0.0, 0.85, 1.0); glBegin(GL_LINE_LOOP); glVertex2f(50, 50); glVertex2f(ventana_ancho - 50, 50); glVertex2f(ventana_ancho - 50, ventana_alto - 50); glVertex2f(50, ventana_alto - 50); glEnd()
 
-    glColor3f(1.0, 1.0, 0.0)
-    render_bitmap_string(ventana_ancho/2 - 120, ventana_alto - 120, GLUT_BITMAP_TIMES_ROMAN_24, "MEJORES PUNTUACIONES")
+    if 'id_textura_plantilla_puntuacion' in globals() and id_textura_plantilla_puntuacion and id_textura_plantilla_puntuacion != 0:
+        glEnable(GL_TEXTURE_2D)
+        glBindTexture(GL_TEXTURE_2D, id_textura_plantilla_puntuacion)
+        glColor3f(1.0, 1.0, 1.0)
+        glBegin(GL_QUADS)
+        glTexCoord2f(0.0, 0.0); glVertex2f(0, 0)
+        glTexCoord2f(1.0, 0.0); glVertex2f(ventana_ancho, 0)
+        glTexCoord2f(1.0, 1.0); glVertex2f(ventana_ancho, ventana_alto)
+        glTexCoord2f(0.0, 1.0); glVertex2f(0, ventana_alto)
+        glEnd(); glDisable(GL_TEXTURE_2D)
 
-    glColor3f(1.0, 1.0, 1.0)
-    if not records_lista:
-        render_bitmap_string(ventana_ancho/2 - 150, ventana_alto - 250, GLUT_BITMAP_TIMES_ROMAN_24, "Aun no hay puntajes registrados.")
+        glColor3f(1.0, 1.0, 1.0)
+        if not records_lista:
+            mensaje_x = ventana_ancho / 2 - 220
+            mensaje_y = ventana_alto / 2 - 10
+            render_bitmap_string(mensaje_x, mensaje_y, GLUT_BITMAP_TIMES_ROMAN_24, "Aun no hay puntajes registrados.")
+        else:
+            escala_x = ventana_ancho / float(PLANTILLA_PUNTUACION_ORIG_ANCHO)
+            escala_y = ventana_alto / float(PLANTILLA_PUNTUACION_ORIG_ALTO)
+            x_num = PLANTILLA_PUNTUACION_NUMERO_X * escala_x
+            for i, puntaje_rec in enumerate(records_lista[:5]):
+                y_num = ventana_alto - (PLANTILLA_PUNTUACION_PRIMERA_Y + i * PLANTILLA_PUNTUACION_DY) * escala_y
+                texto_score = f"{puntaje_rec:05d}"
+                ancho_texto = len(texto_score) * 10
+                render_bitmap_string(x_num - ancho_texto, y_num, GLUT_BITMAP_TIMES_ROMAN_24, texto_score)
     else:
-        for i, puntaje_rec in enumerate(records_lista):
-            render_bitmap_string(ventana_ancho/2 - 160, ventana_alto - 220 - (i * 60), GLUT_BITMAP_TIMES_ROMAN_24, f"TOP {i+1}:    {puntaje_rec:05d} puntos")
+        glColor3f(0.05, 0.1, 0.05); glBegin(GL_QUADS); glVertex2f(0, 0); glVertex2f(ventana_ancho, 0); glVertex2f(ventana_ancho, ventana_alto); glVertex2f(0, ventana_alto); glEnd()
+        glLineWidth(4.0); glColor3f(0.0, 0.85, 1.0); glBegin(GL_LINE_LOOP); glVertex2f(50, 50); glVertex2f(ventana_ancho - 50, 50); glVertex2f(ventana_ancho - 50, ventana_alto - 50); glVertex2f(50, ventana_alto - 50); glEnd()
+        glColor3f(1.0, 1.0, 0.0)
+        render_bitmap_string(ventana_ancho/2 - 120, ventana_alto - 120, GLUT_BITMAP_TIMES_ROMAN_24, "MEJORES PUNTUACIONES")
+
+        glColor3f(1.0, 1.0, 1.0)
+        if not records_lista:
+            render_bitmap_string(ventana_ancho/2 - 150, ventana_alto - 250, GLUT_BITMAP_TIMES_ROMAN_24, "Aun no hay puntajes registrados.")
+        else:
+            for i, puntaje_rec in enumerate(records_lista):
+                render_bitmap_string(ventana_ancho/2 - 160, ventana_alto - 220 - (i * 60), GLUT_BITMAP_TIMES_ROMAN_24, f"TOP {i+1}:    {puntaje_rec:05d} puntos")
 
     glColor3f(0.6, 0.6, 0.6)
     render_bitmap_string(ventana_ancho/2 - 190, 100, GLUT_BITMAP_9_BY_15, "CLIC EN CUALQUIER LUGAR O PRESIONA ESC PARA VOLVER AL MENU")
@@ -1014,7 +1051,7 @@ def procesar_teclado_navegacion(window):
 # ==============================================================================
 def main():
     global puntaje, pacman_vidas, pacman_x, pacman_z, estado_actual, puntos, fantasmas, capsulas_poder, fantasmas_asustados, tiempo_fantasmas_asustados, tiempo_inicio_muerte, tiempo_inicio_intro, tiempo_inicio_juego
-    global boca_angulo, boca_abriendo, id_textura_muro, id_textura_piso, id_textura_arbol, id_textura_piso_exterior, id_textura_corazon, id_textura_menu, id_textura_boton, id_textura_boton_jugar, id_textura_boton_menu_principal, id_textura_boton_puntuacion, id_textura_boton_reanudar, id_textura_boton_salir, id_textura_boton_salir_del_juego, id_textura_boton_volver_a_jugar, id_textura_titulo_menu, id_textura_game_over, id_textura_pausa, id_textura_cuadro_puntuacion, id_textura_titulo_victoria, id_textura_preparate, pacman_invulnerable, pacman_tiempo_invulnerable, record_guardado
+    global boca_angulo, boca_abriendo, id_textura_muro, id_textura_piso, id_textura_arbol, id_textura_piso_exterior, id_textura_corazon, id_textura_menu, id_textura_boton, id_textura_boton_jugar, id_textura_boton_menu_principal, id_textura_boton_puntuacion, id_textura_boton_reanudar, id_textura_boton_salir, id_textura_boton_salir_del_juego, id_textura_boton_volver_a_jugar, id_textura_titulo_menu, id_textura_game_over, id_textura_pausa, id_textura_cuadro_puntuacion, id_textura_titulo_victoria, id_textura_preparate, id_textura_plantilla_puntuacion, pacman_invulnerable, pacman_tiempo_invulnerable, record_guardado
     global musica_actual, fx_comer, fx_muerte, fx_retorno, fx_pausa, fx_victoria, en_pausa_fantasma, tiempo_pausa_fantasma
     
     if not glfw.init(): return
@@ -1050,6 +1087,7 @@ def main():
     id_textura_cuadro_puntuacion       = cargar_textura_imagen("cuadro_puntuacion.png")
     id_textura_titulo_victoria         = cargar_textura_imagen("titulo_victoria.png")
     id_textura_preparate               = cargar_textura_imagen("imagen_preparate.png")
+    id_textura_plantilla_puntuacion    = cargar_textura_imagen("plantilla_puntuacion.png")
     if os.path.exists("imagen_preparate.png"):
         try:
             img = Image.open("imagen_preparate.png")
