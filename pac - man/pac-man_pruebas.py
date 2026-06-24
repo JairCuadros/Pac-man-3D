@@ -136,9 +136,6 @@ boton_jugar_rect    = [ventana_ancho/2 - 150, ventana_alto - 390, 300, 70]
 boton_records_rect  = [ventana_ancho/2 - 150, ventana_alto - 480, 300, 70]
 boton_salir_rect    = [ventana_ancho/2 - 150, ventana_alto - 570, 300, 70]
 
-boton_mute_rect     = [50, 50, 140, 45]
-barra_volumen_rect  = [210, 62, 180, 20]
-
 # Botones del menú de pausa
 boton_reanudar_rect      = [ventana_ancho/2 - 150, ventana_alto/2 + 20,  300, 70]
 boton_menu_pausa_rect    = [ventana_ancho/2 - 150, ventana_alto/2 - 70,  300, 70]
@@ -167,9 +164,6 @@ def redimensionar_ventana_callback(window, width, height):
     boton_records_rect  = [ventana_ancho/2 - 150, ventana_alto - 480, 300, 70]
     boton_salir_rect    = [ventana_ancho/2 - 150, ventana_alto - 570, 300, 70]
 
-    boton_mute_rect     = [50, 50, 140, 45]
-    barra_volumen_rect  = [210, 62, 180, 20]
-
     boton_reanudar_rect    = [ventana_ancho/2 - 150, ventana_alto/2 + 20,  300, 70]
     boton_menu_pausa_rect  = [ventana_ancho/2 - 150, ventana_alto/2 - 70,  300, 70]
     boton_salir_pausa_rect = [ventana_ancho/2 - 150, ventana_alto/2 - 160, 300, 70]
@@ -188,15 +182,7 @@ def mouse_click_callback(window, button, action, mods):
         y = ventana_alto - y
 
         if estado_actual == ESTADO_MENU:
-            if punto_en_rectangulo(x, y, boton_mute_rect):
-                juego_muteado = not juego_muteado
-                actualizar_volumen_maestro()
-            elif punto_en_rectangulo(x, y, barra_volumen_rect):
-                fraccion = (x - barra_volumen_rect[0]) / barra_volumen_rect[2]
-                volumen_actual = max(0.0, min(1.0, fraccion))
-                juego_muteado = False 
-                actualizar_volumen_maestro()
-            elif punto_en_rectangulo(x, y, boton_jugar_rect):
+            if punto_en_rectangulo(x, y, boton_jugar_rect):
                 inicializar_juego()
                 estado_actual = ESTADO_INTRO
                 tiempo_inicio_intro = glfw.get_time()
@@ -782,28 +768,6 @@ def renderizar_menu_principal():
     draw_button_texture(boton_records_rect, id_textura_boton_puntuacion)
     draw_button_texture(boton_salir_rect, id_textura_boton_salir)
 
-    texto_mute = "AUDIO: MUTED" if juego_muteado else "MUTEAR"
-    draw_styled_button(boton_mute_rect, id_textura_boton, texto_mute, 1.0, 1.0, 1.0)
-
-    glColor3f(0.15, 0.15, 0.15)
-    glBegin(GL_QUADS)
-    glVertex2f(barra_volumen_rect[0], barra_volumen_rect[1])
-    glVertex2f(barra_volumen_rect[0] + barra_volumen_rect[2], barra_volumen_rect[1])
-    glVertex2f(barra_volumen_rect[0] + barra_volumen_rect[2], barra_volumen_rect[1] + barra_volumen_rect[3])
-    glVertex2f(barra_volumen_rect[0], barra_volumen_rect[1] + barra_volumen_rect[3])
-    glEnd()
-
-    glColor3f(0.0, 0.85, 1.0) 
-    glBegin(GL_QUADS)
-    glVertex2f(barra_volumen_rect[0], barra_volumen_rect[1])
-    glVertex2f(barra_volumen_rect[0] + barra_volumen_rect[2] * volumen_actual, barra_volumen_rect[1])
-    glVertex2f(barra_volumen_rect[0] + barra_volumen_rect[2] * volumen_actual, barra_volumen_rect[1] + barra_volumen_rect[3])
-    glVertex2f(barra_volumen_rect[0], barra_volumen_rect[1] + barra_volumen_rect[3])
-    glEnd()
-
-    glColor3f(1.0, 1.0, 1.0)
-    render_bitmap_string(barra_volumen_rect[0], barra_volumen_rect[1] + 26, GLUT_BITMAP_HELVETICA_12, f"VOLUMEN: {int(volumen_actual*100)}%")
-
     if hay_texturas_pendientes():
         glColor3f(1.0, 0.9, 0.0)
         render_bitmap_string(ventana_ancho/2 - 120, 40, GLUT_BITMAP_HELVETICA_18, "Recargando recursos...")
@@ -854,7 +818,7 @@ def renderizar_hud_interfaz():
         
         # Caja Score - usando textura de cuadro_puntuacion en la esquina superior derecha
         cuadro_w = 280
-        cuadro_h = 60
+        cuadro_h = 70
         cuadro_x = ventana_ancho - cuadro_w - 20
         cuadro_y = ventana_alto - cuadro_h - 20
         if 'id_textura_cuadro_puntuacion' in globals() and id_textura_cuadro_puntuacion and id_textura_cuadro_puntuacion != 0:
@@ -868,23 +832,30 @@ def renderizar_hud_interfaz():
             glTexCoord2f(0.0, 1.0); glVertex2f(cuadro_x, cuadro_y + cuadro_h)
             glEnd(); glDisable(GL_TEXTURE_2D)
         else:
-            glColor4f(0.0, 0.0, 0.0, 0.65); glBegin(GL_QUADS); glVertex2f(cuadro_x, cuadro_y); glVertex2f(cuadro_x + cuadro_w, cuadro_y); glVertex2f(cuadro_x + cuadro_w, cuadro_y + cuadro_h); glVertex2f(cuadro_x, cuadro_y + cuadro_h); glEnd()
-        glLineWidth(2.0); glColor3f(0.0, 0.85, 1.0); glBegin(GL_LINE_LOOP); glVertex2f(cuadro_x, cuadro_y); glVertex2f(cuadro_x + cuadro_w, cuadro_y); glVertex2f(cuadro_x + cuadro_w, cuadro_y + cuadro_h); glVertex2f(cuadro_x, cuadro_y + cuadro_h); glEnd()
+            glColor4f(0.0, 0.0, 0.0, 0.75); glBegin(GL_QUADS); glVertex2f(cuadro_x, cuadro_y); glVertex2f(cuadro_x + cuadro_w, cuadro_y); glVertex2f(cuadro_x + cuadro_w, cuadro_y + cuadro_h); glVertex2f(cuadro_x, cuadro_y + cuadro_h); glEnd()
 
-        texto_score = f"PUNTOS: {puntaje:05d}"
-        text_x = cuadro_x + 18
-        text_y = cuadro_y + cuadro_h / 2 - 8
-        glColor4f(0.0, 0.0, 0.0, 1.0)
-        render_bitmap_string(text_x + 2, text_y - 2, GLUT_BITMAP_TIMES_ROMAN_24, texto_score)
-        glColor3f(1.0, 1.0, 0.2)
-        render_bitmap_string(text_x, text_y, GLUT_BITMAP_TIMES_ROMAN_24, texto_score)
+        texto_label = "PUNTOS"
+        texto_score = f"{puntaje:05d}"
+        base_x = cuadro_x + cuadro_w / 2
+        label_y = cuadro_y + cuadro_h - 28
+        score_y = cuadro_y + 20
+        label_width = len(texto_label) * 10
+        score_width = len(texto_score) * 12
+        label_x = base_x - (label_width / 2)
+        score_x = base_x - (score_width / 2)
+
+        glColor4f(0.0, 0.0, 0.0, 0.85)
+        render_bitmap_string(label_x + 2, label_y - 2, GLUT_BITMAP_HELVETICA_18, texto_label)
+        render_bitmap_string(score_x + 3, score_y - 3, GLUT_BITMAP_TIMES_ROMAN_24, texto_score)
+        glColor3f(1.0, 0.95, 0.4)
+        render_bitmap_string(label_x, label_y, GLUT_BITMAP_HELVETICA_18, texto_label)
+        render_bitmap_string(score_x, score_y, GLUT_BITMAP_TIMES_ROMAN_24, texto_score)
 
         dibujar_minimapa()
 
         if fantasmas_asustados:
-            glColor3f(1.0, 0.2, 0.8)
-            render_bitmap_string(30, ventana_alto - 90, GLUT_BITMAP_HELVETICA_18, "¡MODO CAZADOR ACTIVO!")
-            
+            pass
+        
         if estado_actual == ESTADO_INTRO:
             glColor3f(1.0, 1.0, 0.0)
             render_bitmap_string(int(ventana_ancho/2) - 80, int(ventana_alto/2), GLUT_BITMAP_TIMES_ROMAN_24, "¡PREPARATE!")
