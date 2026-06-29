@@ -6,41 +6,34 @@ import math
 import random
 import sys  
 import os
-from pygame import mixer  # Sistema multicanal de alta fidelidad para mezclar música y efectos
+from pygame import mixer
 from PIL import Image
 
-# Inicialización de GLUT para el renderizado de fuentes Bitmap fijas
+# inicialización de GLUT para el renderizado de fuentes Bitmap fijas
 if not any(arg.startswith('--') for arg in sys.argv):
     glutInit(sys.argv)
 
-# ==============================================================================
-# 1. ARQUITECTURA DEL MAPA GIGANTE (DISEÑO ADAPTADO CON CASA DE FANTASMAS CENTRAL)
-# ==============================================================================
+# 1. arquitectura del mapa del juego
 MAPA = [
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], # 0
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], # 1
-    [1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1], # 2
-    [1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1], # 3
-    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], # 4
-    # Fila 5: Las columnas 11, 12, 14 y 15 son muros de la casa. La columna 13 es '0' (La Puerta)
-    [1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1], # 5
-    # Fila 6: Columnas 12, 13 y 14 son el espacio interior hueco de la casa de fantasmas
-    [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1], # 6
-    # Fila 7: Columnas de la 11 a la 15 son '1' completando la pared trasera de la casa
-    [1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1], # 7
-    [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1], # 8
-    [1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1], # 9
-    [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], # 10
-    [1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1], # 11
-    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]  # 12
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1],
+    [1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+    [1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 ]
 
 ALTO_MAPA = len(MAPA)
 ANCHO_MAPA = len(MAPA[0])
 
-# ==============================================================================
-# 2. DEFINICIÓN DE LA MÁQUINA DE ESTADOS DEL JUEGO
-# ==============================================================================
+# 2. definicion de la máquina de estados del juego
 ESTADO_MENU = 0
 ESTADO_JUEGO = 1
 ESTADO_RECORDS = 2
@@ -53,7 +46,7 @@ ESTADO_INTRO = 7
 estado_actual = ESTADO_MENU
 record_guardado = False
 
-# Variables de control de audio musical y efectos
+# variables de control de audio musical y efectos
 musica_actual = None
 musica_juego_etapa = 1
 musica_anterior_pausa = None
@@ -68,9 +61,7 @@ juego_muteado = False
 
 total_puntos = 0
 
-# ==============================================================================
-# VARIABLES DE ESTADO GLOBAL (DENTRO DEL JUEGO)
-# ==============================================================================
+# variables de estado actual
 pacman_x = 1.5
 pacman_z = 1.5
 pacman_angulo_rotacion = 90.0  
@@ -103,12 +94,12 @@ DURACION_INMUNIDAD = 3.0
 ventana_ancho = 1000  
 ventana_alto = 700
 
-# Dimensiones del HUD de puntuación (para plantilla y reutilización)
+# dimensiones del HUD de puntuación
 CUADRO_PUNTOS_ANCHO = 280
 CUADRO_PUNTOS_ALTO = 70
 CUADRO_PUNTOS_MARGEN = 20
 
-# Datos de plantilla de records
+# datos de plantilla de records
 PLANTILLA_PUNTUACION_ANCHO = 900
 PLANTILLA_PUNTUACION_ALTO = 502
 PLANTILLA_PUNTUACION_ORIG_ANCHO = 2752
@@ -150,26 +141,24 @@ lista_capsula_id = 0
 bosque_posiciones = []
 records_lista = []
 
-# Botones del menú principal
+# botones del menú principal
 boton_jugar_rect    = [ventana_ancho/2 - 150, ventana_alto - 390, 300, 70]
 boton_records_rect  = [ventana_ancho/2 - 150, ventana_alto - 480, 300, 70]
 boton_salir_rect    = [ventana_ancho/2 - 150, ventana_alto - 570, 300, 70]
 
-# Botones del menú de pausa
+# botones del menú de pausa
 boton_reanudar_rect      = [ventana_ancho/2 - 150, ventana_alto/2 + 20,  300, 70]
 boton_menu_pausa_rect    = [ventana_ancho/2 - 150, ventana_alto/2 - 70,  300, 70]
 boton_salir_pausa_rect   = [ventana_ancho/2 - 150, ventana_alto/2 - 160, 300, 70]
 
-# Botones de game over
+# botones de game over
 boton_reiniciar_go_rect  = [ventana_ancho/2 - 150, ventana_alto/2 + 10, 300, 70]
 boton_menu_go_rect       = [ventana_ancho/2 - 150, ventana_alto/2 - 80, 300, 70]
 boton_salir_go_rect      = [ventana_ancho/2 - 150, ventana_alto/2 - 170, 300, 70]
 
 esc_presionado_antes = False
 
-# ==============================================================================
-# ESCUCHAS DE INTERACCIÓN (GLFW CALLBACKS)
-# ==============================================================================
+# escuchas de interaccion
 def redimensionar_ventana_callback(window, width, height):
     global ventana_ancho, ventana_alto
     global boton_jugar_rect, boton_records_rect, boton_salir_rect
@@ -220,7 +209,7 @@ def mouse_click_callback(window, button, action, mods):
             elif punto_en_rectangulo(x, y, boton_menu_pausa_rect): estado_actual = ESTADO_MENU
             elif punto_en_rectangulo(x, y, boton_salir_pausa_rect): glfw.set_window_should_close(window, True)
 
-# CORREGIDO: Forzar el paso por la animación de introducción y sincronizar relojes
+# forzar el paso por la animación de introducción y sincronizar relojes
         elif estado_actual == ESTADO_GAME_OVER:
             if punto_en_rectangulo(x, y, boton_reiniciar_go_rect):
                 inicializar_juego()
@@ -276,7 +265,7 @@ def reproducir_musica_juego_etapa(etapa):
         musica_actual = "juego"
         musica_juego_etapa = etapa
     except Exception as e:
-        print(f"Warning: no se pudo reproducir música de juego etapa {etapa}: {e}")
+        print(f"no se pudo reproducir música de juego etapa {etapa}: {e}")
 
 
 def reproducir_musica_fantasma_asustado():
@@ -289,7 +278,7 @@ def reproducir_musica_fantasma_asustado():
         mixer.music.play(-1)
         musica_actual = "fantasma_asustado"
     except Exception as e:
-        print(f"Warning: no se pudo reproducir música de fantasma asustado: {e}")
+        print(f"no se pudo reproducir música de fantasma asustado: {e}")
 
 
 def restablecer_musica_juego_por_progreso():
@@ -304,12 +293,10 @@ def restablecer_musica_juego_por_progreso():
     else:
         reproducir_musica_juego_etapa(1)
 
-# ==============================================================================
-# SISTEMA DE CARGA DE RECURSOS Y TEXTURAS
-# ==============================================================================
+# sistema de carga de recursos y texturas
 def cargar_textura_imagen(ruta_archivo):
     if not os.path.exists(ruta_archivo):
-        print(f"Warning: El archivo de textura '{ruta_archivo}' no existe. Usando placeholder.")
+        print(f"El archivo de textura '{ruta_archivo}' no existe.")
         return 0
     try:
         img = Image.open(ruta_archivo)
@@ -317,7 +304,7 @@ def cargar_textura_imagen(ruta_archivo):
         img_data = img.convert("RGBA").tobytes()
         ancho, alto = img.size
     except Exception as e:
-        print(f"Error crítico al cargar la imagen de textura '{ruta_archivo}': {e}")
+        print(f"Error al cargar la imagen de textura '{ruta_archivo}': {e}")
         sys.exit()
 
     textura_id = glGenTextures(1)
@@ -373,9 +360,7 @@ def compilar_geometria_estatica():
     draw_perfect_sphere(0.18, 12, 12) 
     glEndList()
 
-# ==============================================================================
-# 3. SISTEMA DE RÉCORDS (PERSISTENCIA DE ARCHIVOS)
-# ==============================================================================
+# 3. sistema de records
 def guardar_puntaje(p):
     try:
         with open("records.txt", "a") as f: f.write(f"{p}\n")
@@ -421,7 +406,7 @@ def inicializar_juego():
     total_puntos = len(puntos)
     musica_juego_etapa = 1
     
-    # Estructura del Fantasma: [X, Z, DirX, DirZ, ColorRGB, CasaX, CasaZ, Es_Ojos_Regresando, Tiempo_Salida]
+    # Estructura del Fantasma
     fantasmas = [
         [13.5, 6.5, 0.0, -0.04, (0.9, 0.2, 0.2), 13.5, 6.5, False, 0.0],   # Blinky (Rojo)
         [13.5, 6.5, 0.0, -0.04, (1.0, 0.4, 0.6), 13.5, 6.5, False, 5.0],   # Pinky (Rosado)
@@ -429,9 +414,7 @@ def inicializar_juego():
         [13.5, 6.5, 0.0, -0.04, (0.9, 0.5, 0.1), 13.5, 6.5, False, 15.0]   # Clyde (Naranja)
     ]
 
-# ==============================================================================
-# 4. RENDERIZADO GEOMETRÍA 3D Y DETECCIÓN DE COLISIONES
-# ==============================================================================
+# 4. renderizado geometria 3d y deteccion de colisiones
 def draw_jungle_background():
     glCallList(lista_bosque_id)
 
@@ -511,7 +494,7 @@ def draw_ghost(r, g, b, solo_ojos=False):
         glColor3f(1.0, 1.0, 1.0); glPushMatrix(); glTranslatef(0.09 * lado, 0.12, 0.20); draw_perfect_sphere(0.05, 8, 8)
         glColor3f(0.0, 0.1, 0.7); glTranslatef(0.0, 0.0, 0.015); draw_perfect_sphere(0.024, 6, 6); glPopMatrix()
 
-# AGREGADO: Restauradas de forma estricta las funciones lógicas de detección de colisión y re-direccionamiento
+# restauradas de forma estricta las funciones lógicas de detección de colisión y re-direccionamiento
 def verificar_colision(nx, nz):
     radio_colision = 0.32
     for dx in [-radio_colision, radio_colision]:
@@ -563,14 +546,11 @@ def obtener_siguiente_direccion_retorno(fx, fz, vel_actual):
     dir_z = paso[1] - start[1]
     return math.copysign(vel_actual, dir_x) if dir_x != 0 else 0.0, math.copysign(vel_actual, dir_z) if dir_z != 0 else 0.0
 
-# ==============================================================================
-# 5. RENDERIZADO INTERFAZ 2D (HUD, MENÚS Y RÉCORDS)
-# ==============================================================================
+# 5. renderizado interfaz 2D
 def render_bitmap_string(x, y, font, text_string):
     glWindowPos2i(int(x), int(y))
     for char in text_string:
         glutBitmapCharacter(font, ord(char))
-
 
 def proyectar_a_pantalla(x, y, z):
     modelview = glGetDoublev(GL_MODELVIEW_MATRIX)
@@ -580,7 +560,6 @@ def proyectar_a_pantalla(x, y, z):
     if win is None:
         return 0.0, 0.0, 0.0
     return win[0], win[1], win[2]
-
 
 def agregar_popup_puntaje_fantasma(x, z, texto):
     puntajes_fantasma.append({
@@ -592,7 +571,6 @@ def agregar_popup_puntaje_fantasma(x, z, texto):
         'offset_x': random.uniform(-0.35, 0.35),
         'offset_y': random.uniform(0.15, 0.35)
     })
-
 
 def dibujar_popups_puntaje_fantasma():
     if not puntajes_fantasma:
@@ -765,7 +743,6 @@ def dibujar_minimapa():
 
 def renderizar_menu_principal():
     setup_ortho()
-    # Background (textured if available, fallback solid if not)
     if 'id_textura_menu' in globals() and id_textura_menu and id_textura_menu != 0:
         glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, id_textura_menu); glColor3f(1.0, 1.0, 1.0)
         glBegin(GL_QUADS)
@@ -872,7 +849,7 @@ def renderizar_hud_interfaz():
                 glVertex2f(x + 28, y + 6)
                 glEnd()
         
-        # Caja Score - usando textura de cuadro_puntuacion en la esquina superior derecha
+        # Caja Score usando textura de cuadro_puntuacion en la esquina superior derecha
         cuadro_w = CUADRO_PUNTOS_ANCHO
         cuadro_h = CUADRO_PUNTOS_ALTO
         cuadro_x = ventana_ancho - cuadro_w - CUADRO_PUNTOS_MARGEN
@@ -979,7 +956,7 @@ def renderizar_hud_interfaz():
         glColor4f(0.0, 0.0, 0.0, 0.80); glBegin(GL_QUADS); glVertex2f(0, 0); glVertex2f(ventana_ancho, 0); glVertex2f(ventana_ancho, ventana_alto); glVertex2f(0, ventana_alto); glEnd()
         
 
-        # Escalar y posicionar logo de victoria ligeramente más pequeño y dejar espacio para el puntaje
+        # escalar y posicionar logo de victoria más pequeño y dejar espacio para el puntaje
         br_y = boton_reiniciar_go_rect[1]
         br_h = boton_reiniciar_go_rect[3]
         img_h = 140
@@ -998,7 +975,7 @@ def renderizar_hud_interfaz():
         else:
             glLineWidth(4.0); glColor3f(0.0, 0.85, 1.0); glBegin(GL_LINE_LOOP); glVertex2f(ventana_ancho/2 - 280, ventana_alto/2 - 120); glVertex2f(ventana_ancho/2 + 280, ventana_alto/2 - 120); glVertex2f(ventana_ancho/2 + 280, ventana_alto/2 + 120); glVertex2f(ventana_ancho/2 - 280, ventana_alto/2 + 120); glEnd()
 
-        # Puntaje final: colocarlo entre el logo y los botones
+        # puntaje final colocarlo entre el logo y los botones
         score_y = br_y + br_h + 12
         score_text = f"PUNTAJE FINAL: {puntaje:05d}"
         score_x = int(ventana_ancho/2) - (len(score_text) * 6)
@@ -1046,9 +1023,8 @@ def procesar_teclado_navegacion(window):
         if dx != 0 and not verificar_colision(pacman_x + dx, pacman_z): pacman_x += dx
         if dz != 0 and not verificar_colision(pacman_x, pacman_z + dz): pacman_z += dz
 
-# ==============================================================================
+
 # LOOP PRINCIPAL
-# ==============================================================================
 def main():
     global puntaje, pacman_vidas, pacman_x, pacman_z, estado_actual, puntos, fantasmas, capsulas_poder, fantasmas_asustados, tiempo_fantasmas_asustados, tiempo_inicio_muerte, tiempo_inicio_intro, tiempo_inicio_juego
     global boca_angulo, boca_abriendo, id_textura_muro, id_textura_piso, id_textura_arbol, id_textura_piso_exterior, id_textura_corazon, id_textura_menu, id_textura_boton, id_textura_boton_jugar, id_textura_boton_menu_principal, id_textura_boton_puntuacion, id_textura_boton_reanudar, id_textura_boton_salir, id_textura_boton_salir_del_juego, id_textura_boton_volver_a_jugar, id_textura_titulo_menu, id_textura_game_over, id_textura_pausa, id_textura_cuadro_puntuacion, id_textura_titulo_victoria, id_textura_preparate, id_textura_plantilla_puntuacion, pacman_invulnerable, pacman_tiempo_invulnerable, record_guardado
@@ -1141,7 +1117,7 @@ def main():
                         mixer.music.load("sonido_intro.mp3") 
                         mixer.music.play(0) 
                     except Exception as e:
-                        print(f"Warning: no se pudo cargar 'sonido_intro.mp3': {e}")
+                        print(f"no se pudo cargar 'sonido_intro.mp3': {e}")
                     musica_actual = "intro"
                 if tiempo_actual - tiempo_inicio_intro > 4.2:
                     estado_actual = ESTADO_JUEGO
@@ -1246,15 +1222,15 @@ def main():
                     for p in puntos:
                         glPushMatrix(); glTranslatef(p[0], 0.15, p[1]); glCallList(lista_moneda_id); glPopMatrix()
 
-# --- CONTROLADOR MAESTRO DE LOS 4 FANTASMAS (IA DE MOVIMIENTO CORREGIDA) ---
+# CONTROLADOR DE LOS 4 FANTASMAS
                 tiempo_de_juego = tiempo_actual - tiempo_inicio_juego
                 for idx, f in enumerate(fantasmas):
                     if f[7]:
-                        vel_actual = 0.10  # Velocidad express para el retorno de los ojos
+                        vel_actual = 0.10  # Velocidad para el retorno de los ojos
                     elif fantasmas_asustados:
-                        vel_actual = 0.04  # Mitad de velocidad en estado de huida (bola rosa)
+                        vel_actual = 0.04 
                     else:
-                        vel_actual = 0.04  # Velocidad estándar de persecución
+                        vel_actual = 0.04  # Velocidad de persecución
 
                     # 1. Espera inicial escalonada dentro de la casa central
                     if estado_actual == ESTADO_JUEGO and tiempo_de_juego < f[8] and not f[7]:
@@ -1276,12 +1252,12 @@ def main():
                             f[3] = -0.04
                             f[1] += f[3]
 
-                    # 3. LÓGICA DE MOVIMIENTO MATRICIAL POR PASILLOS (INTERPOLACIÓN DE INTERSECCIONES)
+                    # 3. logica de movimiento matricial por pasillos
                     elif not en_pausa_fantasma and estado_actual == ESTADO_JUEGO:
                         centro_x = int(f[0]) + 0.5
                         centro_z = int(f[1]) + 0.5
                         
-                        # Corrección matemática: Evaluamos si el fantasma cruzará o alcanzará el centro de la baldosa en este frame
+                        # evaluamos si el fantasma cruzará o alcanzará el centro de la baldosa en este frame
                         llego_al_centro = False
                         if f[2] > 0 and f[0] <= centro_x and f[0] + f[2] >= centro_x: llego_al_centro = True
                         elif f[2] < 0 and f[0] >= centro_x and f[0] + f[2] <= centro_x: llego_al_centro = True
@@ -1291,7 +1267,7 @@ def main():
                         f_dx = math.copysign(vel_actual, f[2]) if f[2] != 0 else 0.0
                         f_dz = math.copysign(vel_actual, f[3]) if f[3] != 0 else 0.0
                         
-                        # Si choca contra un muro o llega al centro geométrico de la celda, decide nuevo rumbo
+                        # si choca contra un muro o llega al centro geométrico de la celda entonces decide un nuevo rumbo
                         if verificar_colision(f[0] + f_dx, f[1] + f_dz) or llego_al_centro:
                             f[0] = centro_x
                             f[1] = centro_z
@@ -1306,7 +1282,7 @@ def main():
                             ]
                             
                             for dx_p, dz_p, cx_off, cz_off in direcciones_posibles:
-                                # Filtro estricto de 180° comparando solo signos vectoriales
+                                # filtro estricto de 180° comparando solo signos vectoriales
                                 if f[2] != 0 and dx_p == -math.copysign(1.0, f[2]): continue
                                 if f[3] != 0 and dz_p == -math.copysign(1.0, f[3]): continue
                                 
@@ -1316,7 +1292,7 @@ def main():
                                     if MAPA[nz_cell][nx_cell] == 0:
                                         caminos_libres.append((dx_p * vel_actual, dz_p * vel_actual, nx_cell, nz_cell))
                             
-                            # Fallback si entra en un callejón sin salida
+                            # fallback si entra en un callejón sin salida
                             if not caminos_libres:
                                 for dx_p, dz_p, cx_off, cz_off in direcciones_posibles:
                                     nx_cell = tx + cx_off
@@ -1328,7 +1304,6 @@ def main():
                             if caminos_libres:
                                 mejor_opcion = caminos_libres[0]
                                 if f[7]:
-                                    # CASO OJOS: Priorizar paso directo hacia la base (13.5,6.5), fallback a BFS si está bloqueado
                                     dir_x = 13.5 - f[0]
                                     dir_z = 6.5 - f[1]
                                     prefer_x = abs(dir_x) >= abs(dir_z)
@@ -1352,7 +1327,7 @@ def main():
                                                     min_distancia = dist
                                                     mejor_opcion = (dx, dz)
                                 elif fantasmas_asustados:
-                                    # CASO BOLA ROSA: Maximizar la distancia euclidiana respecto a Pac-Man (Huida real)
+                                    # maximizar la distancia  respecto a Pac-Man
                                     max_distancia = -1.0
                                     for dx, dz, cx, cz in caminos_libres:
                                         dist = (cx + 0.5 - pacman_x)**2 + (cz + 0.5 - pacman_z)**2
@@ -1360,20 +1335,20 @@ def main():
                                             max_distancia = dist
                                             mejor_opcion = (dx, dz)
                                 else:
-                                    # CASO PERSECUCIÓN: ¡SISTEMA DE PERSONALIDADES ACTIVO!
                                     t_x, t_z = pacman_x, pacman_z
                                     
-                                    if idx == 1: # Pinky (Rosado): Emboscada. Intenta ganar el paso 3 celdas adelante
+                                    # perzonalidades de los fantasmas
+                                    if idx == 1: # Pinky (Rosado): Emboscada, intenta ganar el paso 3 celdas adelante 
                                         if pacman_angulo_rotacion == 90.0: t_x += 3.0
                                         elif pacman_angulo_rotacion == 270.0: t_x -= 3.0
                                         elif pacman_angulo_rotacion == 180.0: t_z -= 3.0
                                         elif pacman_angulo_rotacion == 0.0: t_z += 3.0
                                         
-                                    elif idx == 2: # Inky (Cian): Flanqueo. Busca una ruta paralela desviándose lateralmente
+                                    elif idx == 2: # Inky (Cian): Flanqueo, busca una ruta paralela desviándose lateralmente
                                         if pacman_angulo_rotacion in (90.0, 270.0): t_z += 2.0
                                         else: t_x += 2.0
                                         
-                                    elif idx == 3: # Clyde (Naranja): Distraído. Si se acerca mucho, huye a su esquina
+                                    elif idx == 3: # Clyde (Naranja): Distraído, si se acerca mucho, huye a su esquina
                                         dist_cuadrada = (f[0] - pacman_x)**2 + (f[1] - pacman_z)**2
                                         if dist_cuadrada < 25.0: 
                                             t_x, t_z = 1.5, 11.5 
@@ -1391,19 +1366,19 @@ def main():
                                 f[0], f[1] = 13.5, 6.5
                                 f[7] = False
 
-                        # UNICO DESPLAZAMIENTO FÍSICO REAL (Fuera del bloque IF de arriba)
+                        # desplazamiento fisico real
                         f_dx = math.copysign(vel_actual, f[2]) if f[2] != 0 else 0.0
                         f_dz = math.copysign(vel_actual, f[3]) if f[3] != 0 else 0.0
                         if not verificar_colision(f[0] + f_dx, f[1] + f_dz):
                             f[0] += f_dx
                             f[1] += f_dz
 
-                        # Al llegar por el camino al centro exacto de la base, los ojos resucitan de inmediato
+                        # al llegar por el camino al centro exacto de la base, los ojos resucitan de inmediato
                         if f[7] and abs(f[0] - 13.5) < 0.20 and abs(f[1] - 6.5) < 0.20:
                             f[0], f[1] = 13.5, 6.5
                             f[7] = False
 
-                    # Procesar impactos y capturas contra Pac-Man
+                    # procesar impactos y capturas contra pacman
                     if estado_actual == ESTADO_JUEGO and not en_pausa_fantasma and not f[7] and tiempo_de_juego >= f[8]:
                         distancia_letal = math.sqrt((pacman_x - f[0])**2 + (pacman_z - f[1])**2)
                         if distancia_letal < 0.42:
