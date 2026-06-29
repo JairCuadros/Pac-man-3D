@@ -182,7 +182,7 @@ def redimensionar_ventana_callback(window, width, height):
 
     glViewport(0, 0, width, height)
 
-def mouse_click_callback(window, button, action, mods):
+def mouse_click_retroceso(window, button, action, mods):
     global estado_actual, records_lista, record_guardado, juego_muteado, volumen_actual, tiempo_inicio_intro
 
     if action == glfw.PRESS and button == glfw.MOUSE_BUTTON_LEFT:
@@ -228,7 +228,7 @@ def mouse_click_callback(window, button, action, mods):
                 glfw.set_window_should_close(window, True)
 
 def punto_en_rectangulo(px, py, rect):
-    """ Función auxiliar de colisión de ratón (punto contra rectángulo) """
+    """ Función auxiliar de colisión de ratón"""
     return rect[0] <= px <= rect[0] + rect[2] and rect[1] <= py <= rect[1] + rect[3]
 
 def actualizar_volumen_maestro():
@@ -346,18 +346,18 @@ def compilar_geometria_estatica():
     for f in range(ALTO_MAPA):
         for c in range(ANCHO_MAPA):
             if MAPA[f][c] == 1:
-                glPushMatrix(); glTranslatef(c, 0, f); draw_concrete_wall_textured(1.0, 0.75, 1.0); glPopMatrix()
+                glPushMatrix(); glTranslatef(c, 0, f); dibujar_concreto_pared_texturizado(1.0, 0.75, 1.0); glPopMatrix()
     glEndList()
     
     lista_moneda_id = glGenLists(1)
     glNewList(lista_moneda_id, GL_COMPILE)
-    glColor3f(1.0, 0.75, 0.0); draw_perfect_sphere(0.065, 6, 6) 
+    glColor3f(1.0, 0.75, 0.0); dibujar_esfera_perfecta(0.065, 6, 6) 
     glEndList()
 
     lista_capsula_id = glGenLists(1)
     glNewList(lista_capsula_id, GL_COMPILE)
     glColor3f(1.0, 0.2, 0.8) 
-    draw_perfect_sphere(0.18, 12, 12) 
+    dibujar_esfera_perfecta(0.18, 12, 12) 
     glEndList()
 
 # 3. sistema de records
@@ -415,10 +415,10 @@ def inicializar_juego():
     ]
 
 # 4. renderizado geometria 3d y deteccion de colisiones
-def draw_jungle_background():
+def dibujar_jungla_fondo():
     glCallList(lista_bosque_id)
 
-def draw_floor_textured():
+def dibujar_piso_texturizado():
     glColor3f(1.0, 1.0, 1.0); glEnable(GL_TEXTURE_2D)
     glBindTexture(GL_TEXTURE_2D, id_textura_piso)
     glBegin(GL_QUADS)
@@ -431,7 +431,7 @@ def draw_floor_textured():
     glTexCoord2f(35.0, 35.0); glVertex3f(110.0, -0.02, 90.0); glTexCoord2f(0.0, 35.0); glVertex3f(-80.0, -0.02, 90.0)
     glEnd(); glDisable(GL_TEXTURE_2D)
 
-def draw_concrete_wall_textured(size_x, size_y, size_z):
+def dibujar_concreto_pared_texturizado(size_x, size_y, size_z):
     glColor3f(1.0, 1.0, 1.0); glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, id_textura_muro)
     glBegin(GL_QUADS)
     glTexCoord2f(0.0, 0.0); glVertex3f(0, 0, size_z); glTexCoord2f(1.0, 0.0); glVertex3f(size_x, 0, size_z); glTexCoord2f(1.0, 1.0); glVertex3f(size_x, size_y, size_z); glTexCoord2f(0.0, 1.0); glVertex3f(0, size_y, size_z)
@@ -441,7 +441,7 @@ def draw_concrete_wall_textured(size_x, size_y, size_z):
     glTexCoord2f(0.0, 1.0); glVertex3f(0, size_y, 0); glTexCoord2f(0.0, 0.0); glVertex3f(0, size_y, size_z); glTexCoord2f(1.0, 0.0); glVertex3f(size_x, size_y, size_z); glTexCoord2f(1.0, 1.0); glVertex3f(size_x, size_y, 0)
     glEnd(); glDisable(GL_TEXTURE_2D) 
 
-def draw_perfect_sphere(radius, lats, longs):
+def dibujar_esfera_perfecta(radius, lats, longs):
     for i in range(lats + 1):
         get_lat0 = math.pi * (-0.5 + float(i - 1) / lats); y0 = math.sin(get_lat0) * radius; r0 = math.cos(get_lat0) * radius
         get_lat1 = math.pi * (-0.5 + float(i) / lats); y1 = math.sin(get_lat1) * radius; r1 = math.cos(get_lat1) * radius
@@ -451,7 +451,7 @@ def draw_perfect_sphere(radius, lats, longs):
             glVertex3f(math.cos(lng) * r0, y0, math.sin(lng) * r0); glVertex3f(math.cos(lng) * r1, y1, math.sin(lng) * r1)
         glEnd()
 
-def draw_pacman_final(radius, angle_apertura):
+def dibujar_pacman_final(radius, angle_apertura):
     lats, longs = 32, 32 
     glColor3f(1.0, 0.82, 0.0)
     for i in range(lats + 1):
@@ -478,12 +478,12 @@ def draw_pacman_final(radius, angle_apertura):
     glEnd()
     glColor3f(0.01, 0.01, 0.01) 
     for lado in [-1, 1]:
-        glPushMatrix(); glTranslatef(0.16 * lado, 0.23, 0.08); draw_perfect_sphere(0.032, 8, 8); glPopMatrix()
+        glPushMatrix(); glTranslatef(0.16 * lado, 0.23, 0.08); dibujar_esfera_perfecta(0.032, 8, 8); glPopMatrix()
 
-def draw_ghost(r, g, b, solo_ojos=False):
+def dibujar_fantasma(r, g, b, solo_ojos=False):
     if not solo_ojos:
         glColor3f(r, g, b)
-        glPushMatrix(); glTranslatef(0.0, 0.1, 0.0); draw_perfect_sphere(0.26, 16, 16); glPopMatrix()
+        glPushMatrix(); glTranslatef(0.0, 0.1, 0.0); dibujar_esfera_perfecta(0.26, 16, 16); glPopMatrix()
         glBegin(GL_QUAD_STRIP)
         for j in range(14):
             lng = 2.0 * math.pi * float(j) / 13.0; x, z = math.cos(lng) * 0.26, math.sin(lng) * 0.26
@@ -491,8 +491,8 @@ def draw_ghost(r, g, b, solo_ojos=False):
         glEnd()
         
     for lado in [-1, 1]:
-        glColor3f(1.0, 1.0, 1.0); glPushMatrix(); glTranslatef(0.09 * lado, 0.12, 0.20); draw_perfect_sphere(0.05, 8, 8)
-        glColor3f(0.0, 0.1, 0.7); glTranslatef(0.0, 0.0, 0.015); draw_perfect_sphere(0.024, 6, 6); glPopMatrix()
+        glColor3f(1.0, 1.0, 1.0); glPushMatrix(); glTranslatef(0.09 * lado, 0.12, 0.20); dibujar_esfera_perfecta(0.05, 8, 8)
+        glColor3f(0.0, 0.1, 0.7); glTranslatef(0.0, 0.0, 0.015); dibujar_esfera_perfecta(0.024, 6, 6); glPopMatrix()
 
 # restauradas de forma estricta las funciones lógicas de detección de colisión y re-direccionamiento
 def verificar_colision(nx, nz):
@@ -547,7 +547,7 @@ def obtener_siguiente_direccion_retorno(fx, fz, vel_actual):
     return math.copysign(vel_actual, dir_x) if dir_x != 0 else 0.0, math.copysign(vel_actual, dir_z) if dir_z != 0 else 0.0
 
 # 5. renderizado interfaz 2D
-def render_bitmap_string(x, y, font, text_string):
+def renderizar_bitmap_cadena(x, y, font, text_string):
     glWindowPos2i(int(x), int(y))
     for char in text_string:
         glutBitmapCharacter(font, ord(char))
@@ -588,16 +588,16 @@ def dibujar_popups_puntaje_fantasma():
         if 0 <= screen_x <= ventana_ancho and 0 <= screen_y <= ventana_alto:
             shadow_y = screen_y - 2
             glColor4f(0.0, 0.0, 0.0, alpha)
-            render_bitmap_string(screen_x - 14, shadow_y - 1, GLUT_BITMAP_TIMES_ROMAN_24, popup['texto'])
+            renderizar_bitmap_cadena(screen_x - 14, shadow_y - 1, GLUT_BITMAP_TIMES_ROMAN_24, popup['texto'])
             glColor4f(1.0, 1.0, 0.2, alpha)
-            render_bitmap_string(screen_x - 15, screen_y, GLUT_BITMAP_TIMES_ROMAN_24, popup['texto'])
+            renderizar_bitmap_cadena(screen_x - 15, screen_y, GLUT_BITMAP_TIMES_ROMAN_24, popup['texto'])
 
 
-def setup_ortho():
+def configuracion_ortho():
     glMatrixMode(GL_PROJECTION); glPushMatrix(); glLoadIdentity(); gluOrtho2D(0, ventana_ancho, 0, ventana_alto)
     glMatrixMode(GL_MODELVIEW); glPushMatrix(); glLoadIdentity(); glDisable(GL_DEPTH_TEST)
 
-def restore_perspective():
+def restaurar_perspectiva():
     glEnable(GL_DEPTH_TEST); glPopMatrix(); glMatrixMode(GL_PROJECTION); glPopMatrix(); glMatrixMode(GL_MODELVIEW)
 
 
@@ -608,7 +608,7 @@ def hay_texturas_pendientes():
             return True
     return False
 
-def draw_styled_button(rect, texture_id, text, r, g, b):
+def dibujar_estilo_boton(rect, texture_id, text, r, g, b):
     if texture_id and texture_id != 0:
         glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, texture_id); glColor3f(1.0, 1.0, 1.0)
         glBegin(GL_QUADS)
@@ -639,10 +639,10 @@ def draw_styled_button(rect, texture_id, text, r, g, b):
     ancho_texto_aprox = len(text) * 10
     tx = rect[0] + (rect[2] / 2) - (ancho_texto_aprox / 2)
     ty = rect[1] + (rect[3] / 2) - 7
-    render_bitmap_string(tx, ty, GLUT_BITMAP_HELVETICA_18, text)
+    renderizar_bitmap_cadena(tx, ty, GLUT_BITMAP_HELVETICA_18, text)
 
 
-def draw_button_texture(rect, texture_id):
+def dibujar_textura_boton(rect, texture_id):
     if texture_id and texture_id != 0:
         glEnable(GL_TEXTURE_2D)
         glBindTexture(GL_TEXTURE_2D, texture_id)
@@ -654,7 +654,7 @@ def draw_button_texture(rect, texture_id):
         glTexCoord2f(0.0, 1.0); glVertex2f(rect[0], rect[1] + rect[3])
         glEnd(); glDisable(GL_TEXTURE_2D)
     else:
-        draw_styled_button(rect, 0, "", 1.0, 1.0, 1.0)
+        dibujar_estilo_boton(rect, 0, "", 1.0, 1.0, 1.0)
 
 
 def dibujar_minimapa():
@@ -742,7 +742,7 @@ def dibujar_minimapa():
         glEnd()
 
 def renderizar_menu_principal():
-    setup_ortho()
+    configuracion_ortho()
     if 'id_textura_menu' in globals() and id_textura_menu and id_textura_menu != 0:
         glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, id_textura_menu); glColor3f(1.0, 1.0, 1.0)
         glBegin(GL_QUADS)
@@ -767,20 +767,20 @@ def renderizar_menu_principal():
         glEnd(); glDisable(GL_TEXTURE_2D)
     else:
         glColor3f(1.0, 1.0, 0.0)
-        render_bitmap_string(ventana_ancho/2 - 220, titulo_y + titulo_h/2 - 24, GLUT_BITMAP_TIMES_ROMAN_24, "PAC-MAN (MENU)")
+        renderizar_bitmap_cadena(ventana_ancho/2 - 220, titulo_y + titulo_h/2 - 24, GLUT_BITMAP_TIMES_ROMAN_24, "PAC-MAN (MENU)")
 
-    draw_button_texture(boton_jugar_rect, id_textura_boton_jugar)
-    draw_button_texture(boton_records_rect, id_textura_boton_puntuacion)
-    draw_button_texture(boton_salir_rect, id_textura_boton_salir)
+    dibujar_textura_boton(boton_jugar_rect, id_textura_boton_jugar)
+    dibujar_textura_boton(boton_records_rect, id_textura_boton_puntuacion)
+    dibujar_textura_boton(boton_salir_rect, id_textura_boton_salir)
 
     if hay_texturas_pendientes():
         glColor3f(1.0, 0.9, 0.0)
-        render_bitmap_string(ventana_ancho/2 - 120, 40, GLUT_BITMAP_HELVETICA_18, "Recargando recursos...")
+        renderizar_bitmap_cadena(ventana_ancho/2 - 120, 40, GLUT_BITMAP_HELVETICA_18, "Recargando recursos...")
 
-    restore_perspective()
+    restaurar_perspectiva()
 
 def renderizar_pantalla_records():
-    setup_ortho()
+    configuracion_ortho()
     glColor3f(0.05, 0.1, 0.05); glBegin(GL_QUADS); glVertex2f(0, 0); glVertex2f(ventana_ancho, 0); glVertex2f(ventana_ancho, ventana_alto); glVertex2f(0, ventana_alto); glEnd()
     glLineWidth(4.0); glColor3f(0.0, 0.85, 1.0); glBegin(GL_LINE_LOOP); glVertex2f(50, 50); glVertex2f(ventana_ancho - 50, 50); glVertex2f(ventana_ancho - 50, ventana_alto - 50); glVertex2f(50, ventana_alto - 50); glEnd()
 
@@ -799,7 +799,7 @@ def renderizar_pantalla_records():
         if not records_lista:
             mensaje_x = ventana_ancho / 2 - 220
             mensaje_y = ventana_alto / 2 - 10
-            render_bitmap_string(mensaje_x, mensaje_y, GLUT_BITMAP_TIMES_ROMAN_24, "Aun no hay puntajes registrados.")
+            renderizar_bitmap_cadena(mensaje_x, mensaje_y, GLUT_BITMAP_TIMES_ROMAN_24, "Aun no hay puntajes registrados.")
         else:
             escala_x = ventana_ancho / float(PLANTILLA_PUNTUACION_ORIG_ANCHO)
             escala_y = ventana_alto / float(PLANTILLA_PUNTUACION_ORIG_ALTO)
@@ -808,26 +808,26 @@ def renderizar_pantalla_records():
                 y_num = ventana_alto - (PLANTILLA_PUNTUACION_PRIMERA_Y + i * PLANTILLA_PUNTUACION_DY) * escala_y
                 texto_score = f"{puntaje_rec:05d}"
                 ancho_texto = len(texto_score) * 10
-                render_bitmap_string(x_num - ancho_texto, y_num, GLUT_BITMAP_TIMES_ROMAN_24, texto_score)
+                renderizar_bitmap_cadena(x_num - ancho_texto, y_num, GLUT_BITMAP_TIMES_ROMAN_24, texto_score)
     else:
         glColor3f(0.05, 0.1, 0.05); glBegin(GL_QUADS); glVertex2f(0, 0); glVertex2f(ventana_ancho, 0); glVertex2f(ventana_ancho, ventana_alto); glVertex2f(0, ventana_alto); glEnd()
         glLineWidth(4.0); glColor3f(0.0, 0.85, 1.0); glBegin(GL_LINE_LOOP); glVertex2f(50, 50); glVertex2f(ventana_ancho - 50, 50); glVertex2f(ventana_ancho - 50, ventana_alto - 50); glVertex2f(50, ventana_alto - 50); glEnd()
         glColor3f(1.0, 1.0, 0.0)
-        render_bitmap_string(ventana_ancho/2 - 120, ventana_alto - 120, GLUT_BITMAP_TIMES_ROMAN_24, "MEJORES PUNTUACIONES")
+        renderizar_bitmap_cadena(ventana_ancho/2 - 120, ventana_alto - 120, GLUT_BITMAP_TIMES_ROMAN_24, "MEJORES PUNTUACIONES")
 
         glColor3f(1.0, 1.0, 1.0)
         if not records_lista:
-            render_bitmap_string(ventana_ancho/2 - 150, ventana_alto - 250, GLUT_BITMAP_TIMES_ROMAN_24, "Aun no hay puntajes registrados.")
+            renderizar_bitmap_cadena(ventana_ancho/2 - 150, ventana_alto - 250, GLUT_BITMAP_TIMES_ROMAN_24, "Aun no hay puntajes registrados.")
         else:
             for i, puntaje_rec in enumerate(records_lista):
-                render_bitmap_string(ventana_ancho/2 - 160, ventana_alto - 220 - (i * 60), GLUT_BITMAP_TIMES_ROMAN_24, f"TOP {i+1}:    {puntaje_rec:05d} puntos")
+                renderizar_bitmap_cadena(ventana_ancho/2 - 160, ventana_alto - 220 - (i * 60), GLUT_BITMAP_TIMES_ROMAN_24, f"TOP {i+1}:    {puntaje_rec:05d} puntos")
 
     glColor3f(0.6, 0.6, 0.6)
-    render_bitmap_string(ventana_ancho/2 - 190, 100, GLUT_BITMAP_9_BY_15, "CLIC EN CUALQUIER LUGAR O PRESIONA ESC PARA VOLVER AL MENU")
-    restore_perspective()
+    renderizar_bitmap_cadena(ventana_ancho/2 - 190, 100, GLUT_BITMAP_9_BY_15, "CLIC EN CUALQUIER LUGAR O PRESIONA ESC PARA VOLVER AL MENU")
+    restaurar_perspectiva()
 
 def renderizar_hud_interfaz():
-    setup_ortho()
+    configuracion_ortho()
     
     if estado_actual in (ESTADO_JUEGO, ESTADO_MUERTE, ESTADO_INTRO):
         if 'id_textura_corazon' in globals() and id_textura_corazon and id_textura_corazon != 0:
@@ -879,11 +879,11 @@ def renderizar_hud_interfaz():
         linea_y = cuadro_y + cuadro_h / 2 - 6
 
         glColor4f(0.0, 0.0, 0.0, 0.85)
-        render_bitmap_string(label_x + 2, linea_y - 2, GLUT_BITMAP_HELVETICA_18, texto_label)
-        render_bitmap_string(score_x + 3, linea_y - 3, GLUT_BITMAP_TIMES_ROMAN_24, texto_score)
+        renderizar_bitmap_cadena(label_x + 2, linea_y - 2, GLUT_BITMAP_HELVETICA_18, texto_label)
+        renderizar_bitmap_cadena(score_x + 3, linea_y - 3, GLUT_BITMAP_TIMES_ROMAN_24, texto_score)
         glColor3f(1.0, 0.95, 0.4)
-        render_bitmap_string(label_x, linea_y, GLUT_BITMAP_HELVETICA_18, texto_label)
-        render_bitmap_string(score_x, linea_y, GLUT_BITMAP_TIMES_ROMAN_24, texto_score)
+        renderizar_bitmap_cadena(label_x, linea_y, GLUT_BITMAP_HELVETICA_18, texto_label)
+        renderizar_bitmap_cadena(score_x, linea_y, GLUT_BITMAP_TIMES_ROMAN_24, texto_score)
 
         dibujar_minimapa()
 
@@ -916,7 +916,7 @@ def renderizar_hud_interfaz():
                 glEnd(); glDisable(GL_TEXTURE_2D)
             else:
                 glColor3f(1.0, 1.0, 0.0)
-                render_bitmap_string(int(ventana_ancho/2) - 80, int(ventana_alto/2), GLUT_BITMAP_TIMES_ROMAN_24, "¡PREPARATE!")
+                renderizar_bitmap_cadena(int(ventana_ancho/2) - 80, int(ventana_alto/2), GLUT_BITMAP_TIMES_ROMAN_24, "¡PREPARATE!")
 
     elif estado_actual == ESTADO_PAUSA:
         glColor4f(0.0, 0.0, 0.0, 0.75); glBegin(GL_QUADS); glVertex2f(0, 0); glVertex2f(ventana_ancho, 0); glVertex2f(ventana_ancho, ventana_alto); glVertex2f(0, ventana_alto); glEnd()
@@ -935,10 +935,10 @@ def renderizar_hud_interfaz():
             glTexCoord2f(0.0, 1.0); glVertex2f(pausa_x, pausa_y + pausa_h)
             glEnd(); glDisable(GL_TEXTURE_2D)
         else:
-            glColor3f(1.0, 1.0, 0.0); render_bitmap_string(int(ventana_ancho/2) - 60, int(ventana_alto/2) + 120, GLUT_BITMAP_TIMES_ROMAN_24, "PAUSA")
-        draw_button_texture(boton_reanudar_rect, id_textura_boton_reanudar)
-        draw_button_texture(boton_menu_pausa_rect, id_textura_boton_menu_principal)
-        draw_button_texture(boton_salir_pausa_rect, id_textura_boton_salir_del_juego)
+            glColor3f(1.0, 1.0, 0.0); renderizar_bitmap_cadena(int(ventana_ancho/2) - 60, int(ventana_alto/2) + 120, GLUT_BITMAP_TIMES_ROMAN_24, "PAUSA")
+        dibujar_textura_boton(boton_reanudar_rect, id_textura_boton_reanudar)
+        dibujar_textura_boton(boton_menu_pausa_rect, id_textura_boton_menu_principal)
+        dibujar_textura_boton(boton_salir_pausa_rect, id_textura_boton_salir_del_juego)
 
     elif estado_actual == ESTADO_GAME_OVER:
         glColor4f(0.0, 0.0, 0.0, 0.80); glBegin(GL_QUADS); glVertex2f(0, 0); glVertex2f(ventana_ancho, 0); glVertex2f(ventana_ancho, ventana_alto); glVertex2f(0, ventana_alto); glEnd()
@@ -948,9 +948,9 @@ def renderizar_hud_interfaz():
         glTexCoord2f(0.0, 0.0); glVertex2f(img_go_x, img_go_y); glTexCoord2f(1.0, 0.0); glVertex2f(img_go_x + img_go_w, img_go_y)
         glTexCoord2f(1.0, 1.0); glVertex2f(img_go_x + img_go_w, img_go_y + img_go_h); glTexCoord2f(0.0, 1.0); glVertex2f(img_go_x, img_go_y + img_go_h)
         glEnd(); glDisable(GL_TEXTURE_2D)
-        draw_button_texture(boton_reiniciar_go_rect, id_textura_boton_volver_a_jugar)
-        draw_button_texture(boton_menu_go_rect,      id_textura_boton_menu_principal)
-        draw_button_texture(boton_salir_go_rect,     id_textura_boton_salir_del_juego)
+        dibujar_textura_boton(boton_reiniciar_go_rect, id_textura_boton_volver_a_jugar)
+        dibujar_textura_boton(boton_menu_go_rect,      id_textura_boton_menu_principal)
+        dibujar_textura_boton(boton_salir_go_rect,     id_textura_boton_salir_del_juego)
 
     elif estado_actual == ESTADO_VICTORIA:
         glColor4f(0.0, 0.0, 0.0, 0.80); glBegin(GL_QUADS); glVertex2f(0, 0); glVertex2f(ventana_ancho, 0); glVertex2f(ventana_ancho, ventana_alto); glVertex2f(0, ventana_alto); glEnd()
@@ -980,16 +980,16 @@ def renderizar_hud_interfaz():
         score_text = f"PUNTAJE FINAL: {puntaje:05d}"
         score_x = int(ventana_ancho/2) - (len(score_text) * 6)
         glColor4f(0.0, 0.0, 0.0, 0.85)
-        render_bitmap_string(score_x + 2, int(score_y) - 2, GLUT_BITMAP_TIMES_ROMAN_24, score_text)
+        renderizar_bitmap_cadena(score_x + 2, int(score_y) - 2, GLUT_BITMAP_TIMES_ROMAN_24, score_text)
         glColor3f(1.0, 1.0, 1.0)
-        render_bitmap_string(score_x, int(score_y), GLUT_BITMAP_TIMES_ROMAN_24, score_text)
+        renderizar_bitmap_cadena(score_x, int(score_y), GLUT_BITMAP_TIMES_ROMAN_24, score_text)
 
         # Reusar botones existentes: volver a jugar, menu principal, salir del juego
-        draw_button_texture(boton_reiniciar_go_rect, id_textura_boton_volver_a_jugar)
-        draw_button_texture(boton_menu_go_rect,      id_textura_boton_menu_principal)
-        draw_button_texture(boton_salir_go_rect,     id_textura_boton_salir_del_juego)
+        dibujar_textura_boton(boton_reiniciar_go_rect, id_textura_boton_volver_a_jugar)
+        dibujar_textura_boton(boton_menu_go_rect,      id_textura_boton_menu_principal)
+        dibujar_textura_boton(boton_salir_go_rect,     id_textura_boton_salir_del_juego)
 
-    restore_perspective()
+    restaurar_perspectiva()
 
 def procesar_teclado_navegacion(window):
     global pacman_x, pacman_z, pacman_angulo_rotacion, estado_actual, esc_presionado_antes
@@ -1036,7 +1036,7 @@ def main():
         
     glfw.make_context_current(window)
     glfw.set_framebuffer_size_callback(window, redimensionar_ventana_callback)
-    glfw.set_mouse_button_callback(window, mouse_click_callback)
+    glfw.set_mouse_button_callback(window, mouse_click_retroceso)
     
     glEnable(GL_DEPTH_TEST); glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA) 
     glEnable(GL_ALPHA_TEST); glAlphaFunc(GL_GREATER, 0.5); glClearColor(0.01, 0.03, 0.01, 1.0) 
@@ -1175,7 +1175,7 @@ def main():
             cam_z = pacman_z if estado_actual in (ESTADO_JUEGO, ESTADO_MUERTE, ESTADO_INTRO, ESTADO_PAUSA) else 1.5
             gluLookAt(cam_x, 6.2, cam_z + 4.8, cam_x, 0.2, cam_z, 0.0, 1.0, 0.0)
 
-            draw_floor_textured(); draw_jungle_background(); glCallList(lista_muros_id)
+            dibujar_piso_texturizado(); dibujar_jungla_fondo(); glCallList(lista_muros_id)
 
             if fantasmas_asustados and (tiempo_actual - tiempo_fantasmas_asustados > DURACION_PODER):
                 fantasmas_asustados = False
@@ -1292,7 +1292,7 @@ def main():
                                     if MAPA[nz_cell][nx_cell] == 0:
                                         caminos_libres.append((dx_p * vel_actual, dz_p * vel_actual, nx_cell, nz_cell))
                             
-                            # fallback si entra en un callejón sin salida
+                            # retroceso si entra en un callejón sin salida
                             if not caminos_libres:
                                 for dx_p, dz_p, cx_off, cz_off in direcciones_posibles:
                                     nx_cell = tx + cx_off
@@ -1396,9 +1396,9 @@ def main():
                                 break
 
                     glPushMatrix(); glTranslatef(f[0], 0.22, f[1])
-                    if f[7]: draw_ghost(0, 0, 0, solo_ojos=True) 
-                    elif fantasmas_asustados: draw_ghost(0.1, 0.2, 0.9) 
-                    else: draw_ghost(f[4][0], f[4][1], f[4][2])
+                    if f[7]: dibujar_fantasma(0, 0, 0, solo_ojos=True) 
+                    elif fantasmas_asustados: dibujar_fantasma(0.1, 0.2, 0.9) 
+                    else: dibujar_fantasma(f[4][0], f[4][1], f[4][2])
                     glPopMatrix()
 
                 if any(fant[7] for fant in fantasmas) and estado_actual == ESTADO_JUEGO:
@@ -1411,7 +1411,7 @@ def main():
                 dibujar_pacman = not (pacman_invulnerable and int((tiempo_actual - pacman_tiempo_invulnerable) / 0.15) % 2 == 0)
                 if dibujar_pacman:
                     glPushMatrix(); glTranslatef(pacman_x, 0.22, pacman_z)
-                    glRotatef(pacman_angulo_rotacion, 0.0, 1.0, 0.0); draw_pacman_final(0.30, boca_angulo); glPopMatrix()
+                    glRotatef(pacman_angulo_rotacion, 0.0, 1.0, 0.0); dibujar_pacman_final(0.30, boca_angulo); glPopMatrix()
 
                 if len(puntos) == 0:
                     estado_actual = ESTADO_VICTORIA
@@ -1422,7 +1422,7 @@ def main():
                 for p in puntos:
                     glPushMatrix(); glTranslatef(p[0], 0.15, p[1]); glCallList(lista_moneda_id); glPopMatrix()
                 for f in fantasmas:
-                    glPushMatrix(); glTranslatef(f[0], 0.22, f[1]); draw_ghost(f[4][0], f[4][1], f[4][2], solo_ojos=f[7]); glPopMatrix()
+                    glPushMatrix(); glTranslatef(f[0], 0.22, f[1]); dibujar_fantasma(f[4][0], f[4][1], f[4][2], solo_ojos=f[7]); glPopMatrix()
 
                 if tiempo_muerto < duracion_anim_muerte:
                     porcentaje_anim = tiempo_muerto / duracion_anim_muerte
@@ -1431,7 +1431,7 @@ def main():
                     glPushMatrix()
                     glTranslatef(pacman_x, 0.22, pacman_z)
                     glRotatef(giro_muerte, 0.0, 1.0, 0.0)
-                    draw_pacman_final(escala_actual, 0.0)
+                    dibujar_pacman_final(escala_actual, 0.0)
                     glPopMatrix()
                 else:
                     pacman_vidas -= 1; pacman_x, pacman_z = 1.5, 1.5
@@ -1447,9 +1447,9 @@ def main():
                 for p in puntos:
                     glPushMatrix(); glTranslatef(p[0], 0.15, p[1]); glCallList(lista_moneda_id); glPopMatrix()
                 for f in fantasmas:
-                    glPushMatrix(); glTranslatef(f[0], 0.22, f[1]); draw_ghost(f[4][0], f[4][1], f[4][2], solo_ojos=f[7]); glPopMatrix()
+                    glPushMatrix(); glTranslatef(f[0], 0.22, f[1]); dibujar_fantasma(f[4][0], f[4][1], f[4][2], solo_ojos=f[7]); glPopMatrix()
                 glPushMatrix(); glTranslatef(pacman_x, 0.22, pacman_z)
-                glRotatef(pacman_angulo_rotacion, 0.0, 1.0, 0.0); draw_pacman_final(0.30, 0.3); glPopMatrix()
+                glRotatef(pacman_angulo_rotacion, 0.0, 1.0, 0.0); dibujar_pacman_final(0.30, 0.3); glPopMatrix()
 
             elif estado_actual in (ESTADO_GAME_OVER, ESTADO_VICTORIA):
                 procesar_teclado_navegacion(window)
